@@ -1,0 +1,193 @@
+/* ============================================================
+   智能客服知识库系统 — 客户端主题
+   高效简洁、留白充裕、单一蓝色强调色，落落大方不毛坯。
+   ============================================================ */
+
+* {
+    font-family: "Microsoft YaHei UI", "Microsoft YaHei", "Segoe UI", "PingFang SC", sans-serif;
+}
+
+QWidget {
+    color: #1F2A37;
+    font-size: 14px;
+}
+
+QMainWindow,
+#ContentStack,
+QStackedWidget {
+    background: #F4F6F9;
+}
+
+/* ===== 顶栏 ===== */
+#TopBar {
+    background: #FFFFFF;
+    border-bottom: 1px solid #E5E8EC;
+}
+#PageTitle {
+    font-size: 17px;
+    font-weight: 600;
+    color: #111827;
+}
+#UserBadge {
+    color: #6B7280;
+    font-size: 13px;
+}
+
+/* ===== 侧边导航 ===== */
+#NavTree {
+    background: #FFFFFF;
+    border: none;
+    border-right: 1px solid #E5E8EC;
+    outline: 0;
+    padding: 8px 6px;
+}
+#NavTree::item {
+    height: 38px;
+    border-radius: 8px;
+    padding-left: 12px;
+    margin: 2px 4px;
+    color: #374151;
+}
+#NavTree::item:hover {
+    background: #F0F3F8;
+}
+#NavTree::item:selected {
+    background: #E8F0FE;
+    color: #2563EB;
+    font-weight: 600;
+}
+
+/* ===== 主按钮 ===== */
+QPushButton#PrimaryButton {
+    background: #2563EB;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 8px;
+    padding: 11px 18px;
+    font-size: 15px;
+    font-weight: 600;
+}
+QPushButton#PrimaryButton:hover { background: #1D4FD7; }
+QPushButton#PrimaryButton:pressed { background: #1A45BE; }
+QPushButton#PrimaryButton:disabled { background: #A9C2F5; }
+
+/* ===== 次按钮 / 幽灵按钮 ===== */
+QPushButton#GhostButton {
+    background: transparent;
+    color: #6B7280;
+    border: 1px solid #D8DCE2;
+    border-radius: 8px;
+    padding: 6px 14px;
+}
+QPushButton#GhostButton:hover {
+    color: #2563EB;
+    border-color: #2563EB;
+}
+
+/* ===== 输入框 ===== */
+QLineEdit {
+    background: #FFFFFF;
+    border: 1px solid #D8DCE2;
+    border-radius: 8px;
+    padding: 9px 12px;
+    selection-background-color: #2563EB;
+    selection-color: #FFFFFF;
+}
+QLineEdit:focus {
+    border: 1px solid #2563EB;
+}
+QLineEdit:disabled {
+    background: #F2F4F7;
+    color: #9098A3;
+}
+
+/* ===== 复选框 ===== */
+QCheckBox {
+    color: #4B5563;
+    spacing: 6px;
+}
+
+/* ===== 登录页 ===== */
+#LoginDialog {
+    background: #F4F6F9;
+}
+#LoginCard {
+    background: #FFFFFF;
+    border: 1px solid #E5E8EC;
+    border-radius: 14px;
+}
+#BrandTitle {
+    font-size: 22px;
+    font-weight: 700;
+    color: #111827;
+}
+#BrandSubtitle {
+    font-size: 13px;
+    color: #9098A3;
+}
+#StatusLabel {
+    color: #DC2626;
+    font-size: 13px;
+}
+#HintLabel {
+    color: #9098A3;
+    font-size: 12px;
+}
+QToolButton#LinkButton {
+    background: transparent;
+    border: none;
+    color: #9098A3;
+    padding: 2px 0;
+}
+QToolButton#LinkButton:hover {
+    color: #2563EB;
+}
+
+/* ===== 占位页 ===== */
+#PlaceholderTitle {
+    font-size: 24px;
+    font-weight: 700;
+    color: #111827;
+}
+#PlaceholderHint {
+    font-size: 14px;
+    color: #6B7280;
+}
+#RouteChip {
+    background: #EEF2F7;
+    color: #6B7280;
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 12px;
+}
+#Phase2Chip {
+    background: #FEF3C7;
+    color: #B45309;
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* ===== 滚动条（细化，去毛坯感）===== */
+QScrollBar:vertical {
+    background: transparent;
+    width: 10px;
+    margin: 2px;
+}
+QScrollBar::handle:vertical {
+    background: #CBD2DA;
+    border-radius: 5px;
+    min-height: 30px;
+}
+QScrollBar::handle:vertical:hover {
+    background: #AEB7C2;
+}
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0;
+}
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background: transparent;
+}

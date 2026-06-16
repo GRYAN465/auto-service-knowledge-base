@@ -1,0 +1,54 @@
+# ===== OS / 编辑器 =====
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+
+# ===== IDE =====
+.idea/
+*.iml
+.vscode/
+*.user           # Qt Creator 工程用户配置 (CMakeLists.txt.user)
+CMakeLists.txt.user*
+
+# ===== Qt / CMake / C++（客户端 knowledgeAnswer/）=====
+build/
+build-*/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+*.o
+*.obj
+*.exe
+*.dll
+*.a
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+*.autosave
+
+# ===== Java / Maven（后端 server/）=====
+target/
+*.class
+*.jar
+*.war
+!.mvn/wrapper/maven-wrapper.jar
+.mvn/
+
+# ===== Python / conda（ai-service/，二期）=====
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.conda/
+*.egg-info/
+
+# ===== 运行期产物 / 机密 =====
+*.log
+logs/
+uploads/           # 本地文件存储目录
+application-local.yml
+.env
+.env.local
