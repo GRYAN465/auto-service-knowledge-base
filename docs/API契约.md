@@ -207,7 +207,7 @@
 
 > **站内通知 = 收到的分享**：本期不建独立通知表，「未读通知」即 `kb_share.read_status=0`，收件箱即 `/interaction/share/inbox`。
 > **权限**：`interaction:favorite/share/comment` 已在 `V2__seed_rbac.sql` 种入并随 V2 末尾「ADMIN 授全权」覆盖；缺失的 `interaction:like`（点赞/点踩按钮，挂菜单 201 下，id 2012）由 **`V6__seed_module6_permissions.sql`** 幂等补入并授予 ADMIN（迁移链 v5→v6，不回改 V1–V5）。读端点 `/interaction/comment`、`/interaction/state` 用 `knowledge:search`，门户阅读者即可见。互动均不入 `sys_operation_log`（`/interaction/**` 不在拦截路径，与检索/浏览一致）。
-> **注**：非 ADMIN 内置角色（KNOWLEDGE_ADMIN/AUDITOR/AGENT/USER）在当前 `V2`/演示数据中**尚未被授予任何权限码**（V2 仅 `ADMIN` 授全权），故坐席账号目前无法访问受 `interaction:*`/`knowledge:search` 保护的端点。这是贯穿模块 1–6 的既有种子缺口（非本模块代码问题），如需坐席实测互动，应另行补这些角色的权限授予。
+> **注**：内置角色授权由 `V7__grant_builtin_roles.sql` 补齐——KNOWLEDGE_ADMIN/AUDITOR/AGENT/USER 此前在 `V2` 中**未被授予任何权限码**（仅 `ADMIN` 授全权），曾导致坐席等非 admin 账号访问受保护端点一律 403。V7 按职责幂等补授：知识管理员（分类·标签·知识 CRUD+附件+检索+互动）、审核员（审核+上下线+检索+互动）、坐席/普通用户（检索+收藏/赞踩/评论/分享）。新模块（7 统计 / 8 开放 API）的非 admin 角色授权需在各自迁移中另行追加。
 
 ---
 
