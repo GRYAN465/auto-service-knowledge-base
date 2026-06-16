@@ -120,6 +120,22 @@ QHeaderView::section {
     font-weight: 600;
 }
 
+/* ===== 分类树（知识基础） ===== */
+QTreeWidget#DataTable {
+    background: #FFFFFF;
+    border: 1px solid #E5E8EC;
+    border-radius: 8px;
+    outline: 0;
+    selection-background-color: #E8F0FE;
+    selection-color: #111827;
+}
+QTreeWidget#DataTable::item {
+    height: 32px;
+}
+QTreeWidget#DataTable::item:hover {
+    background: #F0F3F8;
+}
+
 /* ===== 复选框 ===== */
 QCheckBox {
     color: #4B5563;

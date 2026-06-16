@@ -72,6 +72,12 @@ public class OperationLogInterceptor implements HandlerInterceptor {
         if (uri.contains("/system/permission")) {
             return "权限管理";
         }
+        if (uri.contains("/knowledge/category")) {
+            return "知识分类";
+        }
+        if (uri.contains("/knowledge/tag")) {
+            return "知识标签";
+        }
         return "系统管理";
     }
 

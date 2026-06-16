@@ -22,6 +22,7 @@ set(PROJECT_SOURCES
         app/PageRouter.h            app/PageRouter.cpp
         app/PlaceholderPage.h       app/PlaceholderPage.cpp
         app/SystemAdminPage.h       app/SystemAdminPage.cpp
+        app/KnowledgeBasePage.h     app/KnowledgeBasePage.cpp
 
         # 跨模块基础设施
         core/network/ApiClient.h    core/network/ApiClient.cpp

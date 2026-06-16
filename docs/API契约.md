@@ -88,10 +88,34 @@
 
 | 资源 | 路径前缀 | 权限码前缀 | 备注 |
 |---|---|---|---|
-| 分类 | `/knowledge/category` | `knowledge:category:*` | 树 `GET .../tree` |
-| 标签 | `/knowledge/tag` | `knowledge:tag:*` | |
-| 知识 | `/knowledge/article` | `knowledge:article:*` | 见下方明细 |
-| 附件 | `/knowledge/attachment` | `knowledge:attachment:*` | 上传 `POST .../upload`；下载 `GET .../{id}/download` |
+| 分类 | `/knowledge/category` | `knowledge:category:*` | 树 `GET .../tree`；删除**级联**（连同全部子孙分类）✅ 已实现 |
+| 标签 | `/knowledge/tag` | `knowledge:tag:*` | 分页 + 唯一名（`uk_tag_name`）✅ 已实现 |
+| 知识 | `/knowledge/article` | `knowledge:article:*` | 见下方明细（模块 4） |
+| 附件 | `/knowledge/attachment` | `knowledge:attachment:*` | 上传 `POST .../upload`；下载 `GET .../{id}/download`（模块 4） |
+
+### 4.1 分类（模块 3，已实现）
+
+| 方法 | 路径 | 权限码 | 说明 |
+|---|---|---|---|
+| GET | `/knowledge/category` 或 `/knowledge/category/tree` | `knowledge:category:list` | 全量分类树（`List<CategoryTreeVO>`：`id/parentId/name/code/sort/status/children`） |
+| GET | `/knowledge/category/{id}` | `knowledge:category:list` | 分类详情（`KbCategory`） |
+| POST | `/knowledge/category` | `knowledge:category:create` | 新建，入参 `{parentId(=0 为根), name(必填), code, sort, status}` |
+| PUT | `/knowledge/category/{id}` | `knowledge:category:update` | 编辑（校验 `parentId != id`） |
+| DELETE | `/knowledge/category/{id}` | `knowledge:category:delete` | **级联逻辑删除**：删除该节点及其全部子孙分类（客户端对含下级的分类要求输入「确定删除」二次确认）。文章占用校验留待模块 4 |
+
+### 4.2 标签（模块 3，已实现）
+
+| 方法 | 路径 | 权限码 | 说明 |
+|---|---|---|---|
+| GET | `/knowledge/tag?page=1&pageSize=20&keyword=` | `knowledge:tag:list` | 分页（`PageResult<KbTag>`：`total/page/pageSize/list`），`keyword` 按名称模糊 |
+| GET | `/knowledge/tag/{id}` | `knowledge:tag:list` | 标签详情（`KbTag`） |
+| POST | `/knowledge/tag` | `knowledge:tag:create` | 新建，入参 `{name(必填、唯一), color(#RRGGBB), sort}` |
+| PUT | `/knowledge/tag/{id}` | `knowledge:tag:update` | 编辑 |
+| DELETE | `/knowledge/tag/{id}` | `knowledge:tag:delete` | 逻辑删除 |
+
+> **唯一名错误约定**：活跃重名由服务层 `ensureNameUnique` 拦截，返回 `code=1001 标签名称已存在`；若与**已软删**的同名行冲突（DB `uk_tag_name` 不含 `deleted`），由全局 `DataIntegrityViolationException` 兜底返回 `code=1001 数据已存在或违反唯一约束`（不再冒泡 5000）。此兜底对 org/user/role/tag 等普通唯一索引同样生效。
+
+### 4.3 知识主资源（模块 4）
 
 知识主资源关键接口：
 

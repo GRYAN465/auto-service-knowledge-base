@@ -1,6 +1,7 @@
 package com.kb.common;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
@@ -35,6 +36,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public Result<Void> handleAccessDenied(AccessDeniedException e) {
         return Result.fail(ResultCode.FORBIDDEN, "无权限");
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public Result<Void> handleDataIntegrity(DataIntegrityViolationException e) {
+        // 多为唯一索引冲突（如软删行与新建行同名）：兜底成友好的参数错误，避免冒泡成 5000。
+        log.warn("数据完整性约束冲突：{}", e.getMostSpecificCause().getMessage());
+        return Result.fail(ResultCode.PARAM_ERROR, "数据已存在或违反唯一约束");
     }
 
     @ExceptionHandler(Exception.class)

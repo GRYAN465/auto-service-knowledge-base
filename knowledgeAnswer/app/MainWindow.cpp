@@ -1,5 +1,6 @@
 #include "app/MainWindow.h"
 
+#include "app/KnowledgeBasePage.h"
 #include "app/PageRouter.h"
 #include "app/PlaceholderPage.h"
 #include "app/SystemAdminPage.h"
@@ -116,6 +117,9 @@ void MainWindow::registerPages() {
             if (name == QStringLiteral("system.user") || name == QStringLiteral("system.role")
                 || name == QStringLiteral("system.permission") || name == QStringLiteral("system.log")) {
                 return new SystemAdminPage(title, name);
+            }
+            if (name == QStringLiteral("category")) {
+                return new KnowledgeBasePage(title);
             }
             return new PlaceholderPage(title, name, phase2);
         });

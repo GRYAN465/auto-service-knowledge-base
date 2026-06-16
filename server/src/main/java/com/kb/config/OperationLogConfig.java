@@ -17,6 +17,6 @@ public class OperationLogConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(operationLogInterceptor)
-                .addPathPatterns("/system/**");
+                .addPathPatterns("/system/**", "/knowledge/**");
     }
 }
