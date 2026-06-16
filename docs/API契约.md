@@ -77,7 +77,7 @@
 |---|---|---|---|
 | 机构/部门 | `/system/org` | `system:org:*` | 树查询 `GET /system/org/tree` |
 | 人员 | `/system/user` | `system:user:*` | 改密 `PUT /system/user/{id}/password`；启停 `PUT /system/user/{id}/status`；导入 `POST /system/user/import` |
-| 角色 | `/system/role` | `system:role:*` | 分配权限 `PUT /system/role/{id}/permissions` |
+| 角色 | `/system/role` | `system:role:*` | 启用角色选项 `GET /system/role/options`；分配权限 `PUT /system/role/{id}/permissions` |
 | 菜单/权限 | `/system/permission` | `system:permission:*` | 树查询 `GET /system/permission/tree` |
 | 登录日志 | `/system/log/login` | `system:log:login` | 只读分页 |
 | 操作日志 | `/system/log/operation` | `system:log:operation` | 只读分页 |

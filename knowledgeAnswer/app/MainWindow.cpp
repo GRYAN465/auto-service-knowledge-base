@@ -2,6 +2,7 @@
 
 #include "app/PageRouter.h"
 #include "app/PlaceholderPage.h"
+#include "app/SystemAdminPage.h"
 #include "core/auth/Session.h"
 
 #include <QFrame>
@@ -112,6 +113,10 @@ void MainWindow::registerPages() {
         const QString name = m.name;
         const bool phase2 = title.contains(QStringLiteral("二期"));
         m_router->registerPage(name, [title, name, phase2]() -> QWidget * {
+            if (name == QStringLiteral("system.user") || name == QStringLiteral("system.role")
+                || name == QStringLiteral("system.permission") || name == QStringLiteral("system.log")) {
+                return new SystemAdminPage(title, name);
+            }
             return new PlaceholderPage(title, name, phase2);
         });
     });

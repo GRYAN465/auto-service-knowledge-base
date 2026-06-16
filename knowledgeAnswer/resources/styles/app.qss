@@ -101,6 +101,25 @@ QLineEdit:disabled {
     color: #9098A3;
 }
 
+QTableWidget#DataTable {
+    background: #FFFFFF;
+    alternate-background-color: #F8FAFC;
+    border: 1px solid #E5E8EC;
+    border-radius: 8px;
+    gridline-color: #EEF2F7;
+    selection-background-color: #E8F0FE;
+    selection-color: #111827;
+}
+QHeaderView::section {
+    background: #F3F5F8;
+    color: #374151;
+    border: none;
+    border-right: 1px solid #E5E8EC;
+    border-bottom: 1px solid #E5E8EC;
+    padding: 8px 10px;
+    font-weight: 600;
+}
+
 /* ===== 复选框 ===== */
 QCheckBox {
     color: #4B5563;

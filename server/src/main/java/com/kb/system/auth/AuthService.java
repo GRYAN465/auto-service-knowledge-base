@@ -7,6 +7,8 @@ import com.kb.security.JwtTokenProvider;
 import com.kb.system.auth.dto.MeResponse;
 import com.kb.system.auth.dto.TokenResponse;
 import com.kb.system.auth.dto.UserVO;
+import com.kb.system.log.entity.SysLoginLog;
+import com.kb.system.log.mapper.SysLoginLogMapper;
 import com.kb.system.permission.PermissionService;
 import com.kb.system.permission.entity.SysPermission;
 import com.kb.system.role.mapper.SysRoleMapper;
@@ -29,15 +31,17 @@ public class AuthService {
     private final PermissionService permissionService;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
+    private final SysLoginLogMapper loginLogMapper;
 
     public AuthService(SysUserMapper userMapper, SysRoleMapper roleMapper,
                        PermissionService permissionService, PasswordEncoder passwordEncoder,
-                       JwtTokenProvider tokenProvider) {
+                       JwtTokenProvider tokenProvider, SysLoginLogMapper loginLogMapper) {
         this.userMapper = userMapper;
         this.roleMapper = roleMapper;
         this.permissionService = permissionService;
         this.passwordEncoder = passwordEncoder;
         this.tokenProvider = tokenProvider;
+        this.loginLogMapper = loginLogMapper;
     }
 
     /** 登录：校验用户名/密码与账号状态，更新最近登录信息，签发 JWT。 */
@@ -46,10 +50,17 @@ public class AuthService {
                 Wrappers.<SysUser>lambdaQuery().eq(SysUser::getUsername, username));
         // 用户不存在或密码错误统一提示，不泄露账号是否存在
         if (user == null || !passwordEncoder.matches(rawPassword, user.getPassword())) {
+            recordLogin(null, username, clientIp, "FAIL", "用户名或密码错误");
             throw new BusinessException(ResultCode.PARAM_ERROR, "用户名或密码错误");
         }
-        assertUserAvailable(user);
+        try {
+            assertUserAvailable(user);
+        } catch (BusinessException e) {
+            recordLogin(user.getId(), username, clientIp, "FAIL", e.getMessage());
+            throw e;
+        }
         userMapper.updateLoginInfo(user.getId(), LocalDateTime.now(), clientIp);
+        recordLogin(user.getId(), username, clientIp, "SUCCESS", "登录成功");
         String token = tokenProvider.generate(user.getId(), user.getUsername());
         return new TokenResponse(token, tokenProvider.getExpireSeconds());
     }
@@ -75,5 +86,17 @@ public class AuthService {
         if (user.getExpireTime() != null && user.getExpireTime().isBefore(LocalDateTime.now())) {
             throw new BusinessException(ResultCode.FORBIDDEN, "账号已过期");
         }
+    }
+
+    private void recordLogin(Long userId, String username, String clientIp, String status, String msg) {
+        SysLoginLog log = new SysLoginLog();
+        log.setUserId(userId);
+        log.setUsername(username);
+        log.setLoginIp(clientIp);
+        log.setClient("Qt/Desktop");
+        log.setStatus(status);
+        log.setMsg(msg);
+        log.setLoginTime(LocalDateTime.now());
+        loginLogMapper.insert(log);
     }
 }
