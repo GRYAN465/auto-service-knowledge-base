@@ -23,6 +23,14 @@ set(PROJECT_SOURCES
         app/PlaceholderPage.h       app/PlaceholderPage.cpp
         app/SystemAdminPage.h       app/SystemAdminPage.cpp
         app/KnowledgeBasePage.h     app/KnowledgeBasePage.cpp
+        app/ArticleManagePage.h     app/ArticleManagePage.cpp
+        app/AuditCenterPage.h       app/AuditCenterPage.cpp
+        app/ArticleEditorDialog.h   app/ArticleEditorDialog.cpp
+        app/SearchPage.h            app/SearchPage.cpp
+        app/ArticleDetailDialog.h   app/ArticleDetailDialog.cpp
+        app/ShareDialog.h           app/ShareDialog.cpp
+        app/FavoritePage.h          app/FavoritePage.cpp
+        app/SharePage.h             app/SharePage.cpp
 
         # 跨模块基础设施
         core/network/ApiClient.h    core/network/ApiClient.cpp

@@ -3,6 +3,8 @@ package com.kb.knowledge.category;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.kb.common.BusinessException;
 import com.kb.common.ResultCode;
+import com.kb.knowledge.article.entity.KbArticle;
+import com.kb.knowledge.article.mapper.KbArticleMapper;
 import com.kb.knowledge.category.dto.CategoryRequest;
 import com.kb.knowledge.category.dto.CategoryTreeVO;
 import com.kb.knowledge.category.entity.KbCategory;
@@ -22,9 +24,11 @@ import java.util.Map;
 public class CategoryService {
 
     private final KbCategoryMapper categoryMapper;
+    private final KbArticleMapper articleMapper;
 
-    public CategoryService(KbCategoryMapper categoryMapper) {
+    public CategoryService(KbCategoryMapper categoryMapper, KbArticleMapper articleMapper) {
         this.categoryMapper = categoryMapper;
+        this.articleMapper = articleMapper;
     }
 
     public List<CategoryTreeVO> tree() {
@@ -40,6 +44,18 @@ public class CategoryService {
             throw new BusinessException(ResultCode.PARAM_ERROR, "分类不存在");
         }
         return category;
+    }
+
+    /**
+     * 收集指定分类自身 + 全部子孙分类的 id，供「按分类筛选」时把父分类下子分类的知识一并纳入
+     * （检索 / 管理列表共用）。rootId 为 null 返回空集合；正常至少返回自身 id。
+     */
+    public List<Long> subtreeIds(Long rootId) {
+        if (rootId == null) {
+            return List.of();
+        }
+        List<KbCategory> all = categoryMapper.selectList(Wrappers.<KbCategory>lambdaQuery());
+        return collectSubtreeIds(rootId, all);
     }
 
     public KbCategory create(CategoryRequest request) {
@@ -62,9 +78,15 @@ public class CategoryService {
     public void delete(Long id) {
         get(id);
         // 级联删除：连同全部子孙分类一并逻辑删除（客户端已做「输入确定删除」二次确认）。
-        // 知识文章对分类的占用校验留待模块 4（届时校验 kb_article.category_id）。
         List<KbCategory> all = categoryMapper.selectList(Wrappers.<KbCategory>lambdaQuery());
-        for (Long subId : collectSubtreeIds(id, all)) {
+        List<Long> subtreeIds = collectSubtreeIds(id, all);
+        // 占用校验：子树内任一分类被未删知识引用则拦截（模块 4 补回）。
+        Long occupied = articleMapper.selectCount(Wrappers.<KbArticle>lambdaQuery()
+                .in(KbArticle::getCategoryId, subtreeIds));
+        if (occupied != null && occupied > 0) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "分类下存在知识，无法删除");
+        }
+        for (Long subId : subtreeIds) {
             categoryMapper.deleteById(subId);
         }
     }

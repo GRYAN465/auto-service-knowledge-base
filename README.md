@@ -58,6 +58,14 @@ cmake -S knowledgeAnswer -B knowledgeAnswer/build && cmake --build knowledgeAnsw
 cd server && mvn spring-boot:run     # 首启由 Flyway 自动建表；Swagger: /swagger-ui.html
 ```
 
+**演示 / 测试数据**（可选，独立脚本，非 Flyway 迁移；幂等可重跑）
+
+```bash
+# 后端首启建好表后执行；演示账号 k_admin/auditor1/agent1 等密码均 123456
+mysql -u kb -p123456 --default-character-set=utf8mb4 kb \
+  < server/src/main/resources/db/demo/demo_data.sql
+```
+
 **AI 服务（二期）**
 
 ```bash

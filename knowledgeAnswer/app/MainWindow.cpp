@@ -1,8 +1,13 @@
 #include "app/MainWindow.h"
 
+#include "app/ArticleManagePage.h"
+#include "app/AuditCenterPage.h"
+#include "app/FavoritePage.h"
 #include "app/KnowledgeBasePage.h"
 #include "app/PageRouter.h"
 #include "app/PlaceholderPage.h"
+#include "app/SearchPage.h"
+#include "app/SharePage.h"
 #include "app/SystemAdminPage.h"
 #include "core/auth/Session.h"
 
@@ -120,6 +125,21 @@ void MainWindow::registerPages() {
             }
             if (name == QStringLiteral("category")) {
                 return new KnowledgeBasePage(title);
+            }
+            if (name == QStringLiteral("knowledge.manage")) {
+                return new ArticleManagePage(title);
+            }
+            if (name == QStringLiteral("knowledge.search")) {
+                return new SearchPage(title);
+            }
+            if (name == QStringLiteral("favorite")) {
+                return new FavoritePage(title);
+            }
+            if (name == QStringLiteral("share")) {
+                return new SharePage(title);
+            }
+            if (name == QStringLiteral("audit")) {
+                return new AuditCenterPage(title);
             }
             return new PlaceholderPage(title, name, phase2);
         });

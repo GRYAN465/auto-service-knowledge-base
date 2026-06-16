@@ -6,6 +6,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.kb.common.BusinessException;
 import com.kb.common.PageResult;
 import com.kb.common.ResultCode;
+import com.kb.knowledge.article.entity.KbArticleTag;
+import com.kb.knowledge.article.mapper.KbArticleTagMapper;
 import com.kb.knowledge.tag.dto.TagRequest;
 import com.kb.knowledge.tag.entity.KbTag;
 import com.kb.knowledge.tag.mapper.KbTagMapper;
@@ -16,9 +18,11 @@ import org.springframework.util.StringUtils;
 public class TagService {
 
     private final KbTagMapper tagMapper;
+    private final KbArticleTagMapper articleTagMapper;
 
-    public TagService(KbTagMapper tagMapper) {
+    public TagService(KbTagMapper tagMapper, KbArticleTagMapper articleTagMapper) {
         this.tagMapper = tagMapper;
+        this.articleTagMapper = articleTagMapper;
     }
 
     public PageResult<KbTag> page(long page, long pageSize, String keyword) {
@@ -56,7 +60,12 @@ public class TagService {
 
     public void delete(Long id) {
         get(id);
-        // 文章对标签的占用（kb_article_tag）校验留待模块 4。
+        // 占用校验：标签被知识引用（kb_article_tag）时不可删除（模块 4 补回）。
+        Long occupied = articleTagMapper.selectCount(Wrappers.<KbArticleTag>lambdaQuery()
+                .eq(KbArticleTag::getTagId, id));
+        if (occupied != null && occupied > 0) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "标签已被知识引用，无法删除");
+        }
         tagMapper.deleteById(id);
     }
 

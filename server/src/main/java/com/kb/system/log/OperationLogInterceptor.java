@@ -78,11 +78,32 @@ public class OperationLogInterceptor implements HandlerInterceptor {
         if (uri.contains("/knowledge/tag")) {
             return "知识标签";
         }
+        if (uri.contains("/knowledge/article")) {
+            return "知识管理";
+        }
+        if (uri.contains("/knowledge/attachment")) {
+            return "知识附件";
+        }
         return "系统管理";
     }
 
     private static String operationOf(String method, String uri) {
         String upper = method.toUpperCase(Locale.ROOT);
+        if ("POST".equals(upper) && uri.endsWith("/submit")) {
+            return "提交审核";
+        }
+        if ("POST".equals(upper) && uri.endsWith("/audit")) {
+            return "审核";
+        }
+        if ("POST".equals(upper) && uri.endsWith("/online")) {
+            return "上线";
+        }
+        if ("POST".equals(upper) && uri.endsWith("/offline")) {
+            return "下线";
+        }
+        if ("POST".equals(upper) && uri.endsWith("/upload")) {
+            return "上传附件";
+        }
         if ("POST".equals(upper)) {
             return "新增";
         }
