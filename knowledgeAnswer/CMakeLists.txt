@@ -32,6 +32,7 @@ set(PROJECT_SOURCES
         app/FavoritePage.h          app/FavoritePage.cpp
         app/SharePage.h             app/SharePage.cpp
         app/StatisticsPage.h        app/StatisticsPage.cpp
+        app/OpenApiPage.h           app/OpenApiPage.cpp
 
         # 跨模块基础设施
         core/network/ApiClient.h    core/network/ApiClient.cpp

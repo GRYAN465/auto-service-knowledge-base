@@ -4,6 +4,7 @@
 #include "app/AuditCenterPage.h"
 #include "app/FavoritePage.h"
 #include "app/KnowledgeBasePage.h"
+#include "app/OpenApiPage.h"
 #include "app/PageRouter.h"
 #include "app/PlaceholderPage.h"
 #include "app/SearchPage.h"
@@ -144,6 +145,9 @@ void MainWindow::registerPages() {
             }
             if (name == QStringLiteral("statistics")) {
                 return new StatisticsPage(title);
+            }
+            if (name == QStringLiteral("openapi")) {
+                return new OpenApiPage(title);
             }
             return new PlaceholderPage(title, name, phase2);
         });

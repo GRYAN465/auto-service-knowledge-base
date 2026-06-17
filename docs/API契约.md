@@ -31,7 +31,7 @@
   | 5xxx | 检索/应用/互动 |
   | 6xxx | 开放 API |
 
-- **鉴权**：除 `/auth/login` 外，请求头带 `Authorization: Bearer <jwt>`。
+- **鉴权**：除 `/auth/login`、开放 API `/open/v1/**`、健康检查/Swagger 外，业务请求头带 `Authorization: Bearer <jwt>`；开放 API 使用 AppKey + HMAC 签名，见 §6.2。
 - **分页**：请求 `?page=1&pageSize=20`（或 body）；响应 `data`：
 
   ```json
@@ -207,7 +207,7 @@
 
 > **站内通知 = 收到的分享**：本期不建独立通知表，「未读通知」即 `kb_share.read_status=0`，收件箱即 `/interaction/share/inbox`。
 > **权限**：`interaction:favorite/share/comment` 已在 `V2__seed_rbac.sql` 种入并随 V2 末尾「ADMIN 授全权」覆盖；缺失的 `interaction:like`（点赞/点踩按钮，挂菜单 201 下，id 2012）由 **`V6__seed_module6_permissions.sql`** 幂等补入并授予 ADMIN（迁移链 v5→v6，不回改 V1–V5）。读端点 `/interaction/comment`、`/interaction/state` 用 `knowledge:search`，门户阅读者即可见。互动均不入 `sys_operation_log`（`/interaction/**` 不在拦截路径，与检索/浏览一致）。
-> **注**：内置角色授权由 `V7__grant_builtin_roles.sql` 补齐——KNOWLEDGE_ADMIN/AUDITOR/AGENT/USER 此前在 `V2` 中**未被授予任何权限码**（仅 `ADMIN` 授全权），曾导致坐席等非 admin 账号访问受保护端点一律 403。V7 按职责幂等补授：知识管理员（分类·标签·知识 CRUD+附件+检索+互动）、审核员（审核+上下线+检索+互动）、坐席/普通用户（检索+收藏/赞踩/评论/分享）。新模块（7 统计 / 8 开放 API）的非 admin 角色授权需在各自迁移中另行追加。
+> **注**：内置角色授权由 `V7__grant_builtin_roles.sql` 补齐——KNOWLEDGE_ADMIN/AUDITOR/AGENT/USER 此前在 `V2` 中**未被授予任何权限码**（仅 `ADMIN` 授全权），曾导致坐席等非 admin 账号访问受保护端点一律 403。V7 按职责幂等补授：知识管理员（分类·标签·知识 CRUD+附件+检索+互动）、审核员（审核+上下线+检索+互动）、坐席/普通用户（检索+收藏/赞踩/评论/分享）。模块 7 统计授权由 V8 单独补给 KNOWLEDGE_ADMIN/AUDITOR；模块 8 开放应用管理当前 V9 仅授 ADMIN，非 admin 授权按运营职责另行追加。
 
 ---
 
@@ -247,14 +247,55 @@
 
 > **权限**：`statistics:view` 与菜单 401/目录 400 已在 `V2__seed_rbac.sql` 种入且 ADMIN 随 V2 末尾「ADMIN 授全权」覆盖。`V8__grant_statistics.sql` 幂等补**非 admin 角色**授权（沿 V7 遗留约定）：仅授后台分析角色 **KNOWLEDGE_ADMIN(2) / AUDITOR(3)**（含目录 400 作菜单父节点），坐席(4)/普通用户(5) 为门户消费侧不开放统计。`statistics:view` 无需新权限码，故 V8 仅授权、不新增权限。
 
-开放 API（对外，AppKey 鉴权，前缀 `/open`，独立于 `/api`）：
+### 6.2 开放 API（模块 8，已实现）
 
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| 管理 | `/api/openapi/app` (CRUD) | AppKey/限流配置，权限码 `openapi:app:*` |
-| GET | `/open/v1/search` | 对外检索（AppKey + 签名 + 限流 + 调用日志） |
-| GET | `/open/v1/article/{id}` | 对外详情 |
-| POST | `/open/v1/qa` | 对外问答（转发二期 AI，先占位 501） |
+> 访问仍复用 Spring `context-path=/api`，因此完整 URL 为 `http://<host>:8080/api/open/v1/...`；下表路径均为 Base URL `http://<host>:8080/api` 之后的相对路径。开放端点由 `SecurityConfig` 放行 JWT，但必须通过 AppKey + HMAC 签名。
+
+管理端（JWT + RBAC）：
+
+| 方法 | 路径 | 权限码 | 说明 |
+|---|---|---|---|
+| GET | `/openapi/app?page=1&pageSize=20&keyword=&status=` | `openapi:app:list` | 开放应用分页，返回 `appSecretMasked`，不返回明文密钥 |
+| GET | `/openapi/app/{id}` | `openapi:app:list` | 开放应用详情 |
+| POST | `/openapi/app` | `openapi:app:create` | 新增开放应用；`appKey/appSecret` 可留空自动生成，创建响应仅本次返回明文 `appSecret` |
+| PUT | `/openapi/app/{id}` | `openapi:app:update` | 编辑应用名称、状态、限流、scope、备注；`appSecret` 留空保持不变 |
+| PUT | `/openapi/app/{id}/secret` | `openapi:app:update` | 重置 AppSecret，响应仅本次返回明文 |
+| DELETE | `/openapi/app/{id}` | `openapi:app:delete` | 逻辑删除开放应用 |
+
+对外端（AppKey + HMAC）：
+
+| 方法 | 路径 | scope | 说明 |
+|---|---|---|---|
+| GET | `/open/v1/search?page=&pageSize=&keyword=&categoryId=&tagId=` | `search` | 对外检索，仅返回 ONLINE 知识列表，复用 `/search/article` 检索逻辑并写调用日志 |
+| GET | `/open/v1/article/{id}` | `detail` | 对外详情，仅 ONLINE 可访问；不触发门户浏览量自增 |
+| POST | `/open/v1/qa` | `qa` | 对外问答占位；二期 AI 未接入前返回 HTTP 501 + `code=6001` |
+
+请求头：
+
+| Header | 说明 |
+|---|---|
+| `X-App-Key` | 开放应用 `appKey` |
+| `X-Timestamp` | Unix 秒级时间戳，允许服务端时间 ±300 秒 |
+| `X-Nonce` | 调用方生成的随机串；同一应用 5 分钟窗口内不可重复 |
+| `X-Signature` | `HmacSHA256` 十六进制小写签名 |
+
+签名串：
+
+```text
+METHOD
+PATH
+CANONICAL_QUERY
+SHA256(BODY)
+X-Timestamp
+X-Nonce
+```
+
+- `PATH` 为 Base URL 之后的应用路径，例如 `/open/v1/search`，不包含 Spring `context-path` 的 `/api`。
+- `CANONICAL_QUERY` 按参数名升序、同名参数值升序拼接为 `key=value&key=value`；无查询参数时为空行。
+- `BODY` 为原始请求体文本；GET 为空字符串，POST `/open/v1/qa` 使用原始 JSON 字符串。
+- 应用 `scope` 以逗号分隔：`search,detail,qa`；每分钟限流由 `open_app.rate_limit` 控制；`X-Nonce` 在进程内按应用去重，过期窗口同时间戳允许偏差（5 分钟）；每次调用写入 `sys_api_log`。
+
+权限与迁移：菜单 402「API 开放管理」和 `openapi:app:list` 已在 `V2__seed_rbac.sql` 种入，`V9__seed_module8_permissions.sql` 补 `openapi:app:create/update/delete` 并授 ADMIN；非 admin 角色授权按项目运营职责另行增量补授。
 
 ---
 
