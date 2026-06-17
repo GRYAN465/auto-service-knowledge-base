@@ -204,6 +204,31 @@ QToolButton#LinkButton:hover {
     font-weight: 600;
 }
 
+/* ===== 数据统计：指标卡 / 区块标题 / 弱化说明行 ===== */
+#StatCard {
+    background: #FFFFFF;
+    border: 1px solid #E5E8EC;
+    border-radius: 10px;
+}
+#StatCardValue {
+    font-size: 24px;
+    font-weight: 700;
+    color: #111827;
+}
+#StatCardLabel {
+    font-size: 12px;
+    color: #6B7280;
+}
+#SectionTitle {
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+}
+#MutedLine {
+    color: #6B7280;
+    font-size: 13px;
+}
+
 /* ===== 滚动条（细化，去毛坯感）===== */
 QScrollBar:vertical {
     background: transparent;

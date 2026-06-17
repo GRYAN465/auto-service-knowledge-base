@@ -215,9 +215,37 @@
 
 | 方法 | 路径 | 权限码 | 说明 |
 |---|---|---|---|
-| GET | `/statistics/overview` | `statistics:view` | 仪表盘汇总 |
-| GET | `/statistics/hot-article` | `statistics:view` | 热门知识 |
-| GET | `/statistics/hot-keyword` | `statistics:view` | 热门搜索词 |
+| GET | `/statistics/overview` | `statistics:view` | 仪表盘汇总（模块 7）✅ 已实现，见 §6.1 |
+| GET | `/statistics/hot-article` | `statistics:view` | 热门知识（按累计浏览量，可选分类含子分类）（模块 7）✅ 已实现，见 §6.1 |
+| GET | `/statistics/hot-keyword` | `statistics:view` | 热门搜索词（可选时间窗）（模块 7）✅ 已实现，见 §6.1 |
+
+### 6.1 数据统计（模块 7，已实现）
+
+统计端点前缀 `/statistics`，统一权限码 `statistics:view`（菜单 401「数据统计」，V2 已种入）。全部为只读 GET 聚合，不入 `sys_operation_log`。聚合分两类：标量计数/「今日」量走 MyBatis-Plus `selectCount`（自动应用逻辑删除），GROUP BY / SUM 走聚合 `StatisticsMapper` 的原生 `@Select`（**原生 SQL 绕过 `@TableLogic`，查 `kb_article` 处手写 `deleted = 0`**）。
+
+| 方法 | 路径 | 权限码 | 说明 |
+|---|---|---|---|
+| GET | `/statistics/overview` | `statistics:view` | 仪表盘汇总，返回 `OverviewVO`（见下） |
+| GET | `/statistics/hot-article?categoryId=&limit=` | `statistics:view` | 热门知识：按 `kb_article.view_count` 倒序的 **ONLINE** 知识 TOP（`limit` 默认 10、收敛 [1,50]）；`categoryId` 非空时展开为「自身 + 全部子孙分类」再 `IN` 过滤（**含子分类**，复用 `CategoryService.subtreeIds`）。返回 `List<HotArticleVO>` |
+| GET | `/statistics/hot-keyword?days=&limit=` | `statistics:view` | 热门搜索词：`kb_search_log` 按 `keyword` 聚合检索次数倒序（`limit` 默认 10、收敛 [1,50]）；`days` 默认 30，`days>0` 限近 N 自然日（含今日）、`days<=0` 统计全部历史。返回 `List<HotKeywordVO>` |
+
+`overview` 响应 `data`（`OverviewVO`）形态：
+
+```json
+{
+  "articleTotal": 12, "articleOnline": 8, "articlePendingAudit": 1, "articleDraft": 2, "articleOffline": 1,
+  "viewTotal": 1860, "likeTotal": 73, "favoriteTotal": 15, "commentTotal": 2,
+  "categoryCount": 12, "tagCount": 8,
+  "todayViews": 24, "todaySearches": 9, "todayNewArticles": 0,
+  "statusDist": [ { "name": "ONLINE", "count": 8 }, { "name": "DRAFT", "count": 2 } ],
+  "typeDist":   [ { "name": "SCRIPT", "count": 5 }, { "name": "PRODUCT", "count": 4 } ]
+}
+```
+
+- `hot-article` 行（`HotArticleVO`）：`{id, title, categoryId, categoryName, knowledgeType, status, viewCount, likeCount, favoriteCount, commentCount}`。
+- `hot-keyword` 行（`HotKeywordVO`）：`{keyword, searchCount, zeroCount}`，`zeroCount` 为该词命中 0 结果的检索次数（内容缺口信号）。
+
+> **权限**：`statistics:view` 与菜单 401/目录 400 已在 `V2__seed_rbac.sql` 种入且 ADMIN 随 V2 末尾「ADMIN 授全权」覆盖。`V8__grant_statistics.sql` 幂等补**非 admin 角色**授权（沿 V7 遗留约定）：仅授后台分析角色 **KNOWLEDGE_ADMIN(2) / AUDITOR(3)**（含目录 400 作菜单父节点），坐席(4)/普通用户(5) 为门户消费侧不开放统计。`statistics:view` 无需新权限码，故 V8 仅授权、不新增权限。
 
 开放 API（对外，AppKey 鉴权，前缀 `/open`，独立于 `/api`）：
 

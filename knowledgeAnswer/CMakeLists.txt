@@ -31,6 +31,7 @@ set(PROJECT_SOURCES
         app/ShareDialog.h           app/ShareDialog.cpp
         app/FavoritePage.h          app/FavoritePage.cpp
         app/SharePage.h             app/SharePage.cpp
+        app/StatisticsPage.h        app/StatisticsPage.cpp
 
         # 跨模块基础设施
         core/network/ApiClient.h    core/network/ApiClient.cpp

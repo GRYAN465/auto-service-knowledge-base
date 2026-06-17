@@ -8,6 +8,7 @@
 #include "app/PlaceholderPage.h"
 #include "app/SearchPage.h"
 #include "app/SharePage.h"
+#include "app/StatisticsPage.h"
 #include "app/SystemAdminPage.h"
 #include "core/auth/Session.h"
 
@@ -140,6 +141,9 @@ void MainWindow::registerPages() {
             }
             if (name == QStringLiteral("audit")) {
                 return new AuditCenterPage(title);
+            }
+            if (name == QStringLiteral("statistics")) {
+                return new StatisticsPage(title);
             }
             return new PlaceholderPage(title, name, phase2);
         });
