@@ -21,6 +21,7 @@ set(PROJECT_SOURCES
         app/MainWindow.h            app/MainWindow.cpp
         app/PageRouter.h            app/PageRouter.cpp
         app/PlaceholderPage.h       app/PlaceholderPage.cpp
+        app/DashboardPage.h         app/DashboardPage.cpp
         app/SystemAdminPage.h       app/SystemAdminPage.cpp
         app/KnowledgeBasePage.h     app/KnowledgeBasePage.cpp
         app/ArticleManagePage.h     app/ArticleManagePage.cpp

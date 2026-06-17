@@ -2,6 +2,7 @@
 
 #include "app/ArticleManagePage.h"
 #include "app/AuditCenterPage.h"
+#include "app/DashboardPage.h"
 #include "app/FavoritePage.h"
 #include "app/KnowledgeBasePage.h"
 #include "app/OpenApiPage.h"
@@ -20,6 +21,7 @@
 #include <QStackedWidget>
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
+#include <QTreeWidgetItemIterator>
 #include <QVBoxLayout>
 
 #include <functional>
@@ -120,7 +122,12 @@ void MainWindow::registerPages() {
         const QString title = m.title;
         const QString name = m.name;
         const bool phase2 = title.contains(QStringLiteral("二期"));
-        m_router->registerPage(name, [title, name, phase2]() -> QWidget * {
+        m_router->registerPage(name, [this, title, name, phase2]() -> QWidget * {
+            if (name == QStringLiteral("dashboard")) {
+                auto *page = new DashboardPage(title);
+                connect(page, &DashboardPage::navigateRequested, this, &MainWindow::navigateToRoute);
+                return page;
+            }
             if (name == QStringLiteral("system.user") || name == QStringLiteral("system.role")
                 || name == QStringLiteral("system.permission") || name == QStringLiteral("system.log")) {
                 return new SystemAdminPage(title, name);
@@ -196,6 +203,20 @@ void MainWindow::navigateToCurrent() {
     }
     m_router->navigate(name);
     m_pageTitle->setText(item->text(0));
+}
+
+void MainWindow::navigateToRoute(const QString &name) {
+    if (name.isEmpty()) {
+        return;
+    }
+    // 找到路由名匹配的导航树项并选中——复用 currentItemChanged → navigateToCurrent 流，
+    // 让左侧高亮与页面标题随之同步。找不到（该角色菜单无此项）则忽略。
+    for (QTreeWidgetItemIterator it(m_nav); *it; ++it) {
+        if ((*it)->data(0, Qt::UserRole).toString() == name) {
+            m_nav->setCurrentItem(*it);
+            return;
+        }
+    }
 }
 
 } // namespace kb

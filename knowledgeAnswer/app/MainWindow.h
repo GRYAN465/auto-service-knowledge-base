@@ -28,6 +28,7 @@ private:
     void registerPages();
     void buildNav();
     void navigateToCurrent();
+    void navigateToRoute(const QString &name);
 
     QTreeWidget *m_nav = nullptr;
     QStackedWidget *m_stack = nullptr;
