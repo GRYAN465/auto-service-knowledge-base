@@ -45,6 +45,8 @@ kb:
     local-dir: ./uploads          # 本地文件存储目录（FileStorage 抽象）
   ai:
     base-url: http://localhost:8000  # 二期 FastAPI 地址
+    connect-timeout-ms: 3000         # 连接超时
+    read-timeout-ms: 60000           # 读超时（放宽以容 LLM 总结延迟）
 
 logging:
   level:

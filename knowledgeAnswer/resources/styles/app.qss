@@ -251,3 +251,64 @@ QScrollBar::add-page:vertical,
 QScrollBar::sub-page:vertical {
     background: transparent;
 }
+
+/* ===== 模块 9：智能问答 / AI 配置 ===== */
+/* 对话画布 */
+#QaScroll, #QaCanvas {
+    background: #F4F6F9;
+    border: none;
+}
+/* 用户气泡（右） */
+#ChatUserBubble {
+    background: #2563EB;
+    color: #FFFFFF;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 14px;
+}
+/* 助手气泡（左） */
+#ChatBotBubble {
+    background: #FFFFFF;
+    border: 1px solid #E5E8EC;
+    border-radius: 12px;
+}
+/* 答案来源角标 */
+#ModeBadge {
+    background: #EEF2F7;
+    color: #6B7280;
+    border-radius: 10px;
+    padding: 2px 10px;
+    font-size: 12px;
+}
+/* 引用卡片 */
+#CitationCard {
+    background: #F8FAFC;
+    border: 1px solid #E5E8EC;
+    border-radius: 8px;
+}
+#CitationCard:hover {
+    border-color: #2563EB;
+}
+#CitationSnippet {
+    color: #6B7280;
+    font-size: 13px;
+}
+/* 配置表单卡片 */
+#FormCard {
+    background: #FFFFFF;
+    border: 1px solid #E5E8EC;
+    border-radius: 10px;
+}
+#HairLine {
+    color: #E5E8EC;
+}
+/* 数字输入框（温度 / max_tokens）对齐 QLineEdit 风格 */
+QSpinBox, QDoubleSpinBox {
+    background: #FFFFFF;
+    border: 1px solid #D8DCE2;
+    border-radius: 8px;
+    padding: 7px 10px;
+}
+QSpinBox:focus, QDoubleSpinBox:focus {
+    border: 1px solid #2563EB;
+}

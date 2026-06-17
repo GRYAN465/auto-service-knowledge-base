@@ -1,7 +1,8 @@
-"""kb-ai-service —— 智能客服知识库 AI 微服务（二期）。
+"""kb-ai-service —— 智能客服知识库 AI 微服务（二期 · 模块 9）。
 
-当前为占位骨架：仅 ``/health`` 可用；``/ai/*`` 为契约占位（返回 501），
-具体能力（解析 / 切分 / 向量化 / 向量检索 / LLM 问答）在二期模块 9/10 实现。
+M9.1 索引/检索地基 + M9.2 智能问答已落地：``/ai/parse``、``/ai/embed``、
+``/ai/index``、``/ai/index/remove`` 负责解析/切分/向量化/写检索向量库；``/ai/qa``
+做检索增强问答（向量检索 + ms-agent 驱动 OpenAI 兼容 LLM 总结，无 key 抽取式兜底）。
 
 运行（从 ai-service/ 目录）::
 
@@ -17,8 +18,8 @@ setup_logging()
 
 app = FastAPI(
     title="智能客服知识库 · AI 服务",
-    description="解析 / 切分 / 向量化 / 向量检索 / LLM 问答（二期）。当前为占位骨架。",
-    version="0.1.0",
+    description="解析 / 切分 / 向量化 / 向量检索 / LLM 问答（模块 9）。M9.4 LLM 运行时配置下发已落地。",
+    version="0.4.0",
 )
 
 app.include_router(health.router)
@@ -29,15 +30,16 @@ app.include_router(ai.router)
 def root() -> dict:
     return {
         "service": settings.app_name,
-        "status": "placeholder",
-        "phase": "二期实现；当前仅 /health 可用",
+        "status": "ok",
+        "phase": "M9.4 LLM 运行时配置下发（索引/检索 + /ai/qa + /ai/llm/config）",
         "docs": "/docs",
     }
 
 
 @app.on_event("startup")
 def _on_startup() -> None:
-    logger.info("%s 启动（占位骨架，env=%s）", settings.app_name, settings.env)
+    logger.info("%s 启动（env=%s，向量库=%s）", settings.app_name, settings.env,
+                settings.vector_store_dir)
 
 
 if __name__ == "__main__":

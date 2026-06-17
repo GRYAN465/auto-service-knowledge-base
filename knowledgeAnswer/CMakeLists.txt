@@ -34,6 +34,8 @@ set(PROJECT_SOURCES
         app/SharePage.h             app/SharePage.cpp
         app/StatisticsPage.h        app/StatisticsPage.cpp
         app/OpenApiPage.h           app/OpenApiPage.cpp
+        app/QaPage.h                app/QaPage.cpp
+        app/AiConfigPage.h          app/AiConfigPage.cpp
 
         # 跨模块基础设施
         core/network/ApiClient.h    core/network/ApiClient.cpp

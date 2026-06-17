@@ -1,3 +1,28 @@
-# 二期接入向量库 / Embedding / LLM 时在此追加（如 numpy、httpx、pgvector / qdrant-client、openai 等）
-fastapi>=0.111
-uvicorn[standard]>=0.30
+# kb-ai-service 依赖清单（pip 备选；推荐用 conda environment.yml 建 kb-ai 环境）。
+# 版本对齐已验证可共存的组合（torch/transformers/sentence-transformers 来自既有 msagent 环境）。
+
+# —— Web 框架 ——
+fastapi>=0.115
+uvicorn[standard]==0.49.*
+pydantic==2.13.*
+pydantic-settings==2.14.*
+python-multipart==0.0.*
+
+# —— Embedding：本地 bge-zh（CPU）——
+torch==2.12.*
+transformers==5.12.*
+sentence-transformers==5.6.*
+numpy==2.4.*
+
+# —— 向量库 ——
+chromadb>=0.5
+
+# —— 文档解析（pdf / docx / md / txt）——
+pypdf>=4
+python-docx>=1.1
+markdown==3.10.*
+
+# —— LLM（M9.2 智能问答用）——
+ms-agent==1.6.*
+modelscope==1.37.*
+openai==2.42.*

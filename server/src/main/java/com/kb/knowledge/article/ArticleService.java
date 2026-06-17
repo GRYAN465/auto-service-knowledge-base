@@ -17,6 +17,7 @@ import com.kb.knowledge.article.entity.KbArticleTag;
 import com.kb.knowledge.article.entity.KbArticleVersion;
 import com.kb.knowledge.article.entity.KbAttachment;
 import com.kb.knowledge.article.entity.KbAuditRecord;
+import com.kb.knowledge.article.event.ArticleVectorSyncEvent;
 import com.kb.knowledge.article.mapper.KbArticleMapper;
 import com.kb.knowledge.article.mapper.KbArticleTagMapper;
 import com.kb.knowledge.article.mapper.KbArticleVersionMapper;
@@ -32,6 +33,7 @@ import com.kb.knowledge.tag.mapper.KbTagMapper;
 import com.kb.security.SecurityUtils;
 import com.kb.system.user.entity.SysUser;
 import com.kb.system.user.mapper.SysUserMapper;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -76,12 +78,13 @@ public class ArticleService {
     private final SysUserMapper userMapper;
     private final KbViewLogMapper viewLogMapper;
     private final CategoryService categoryService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public ArticleService(KbArticleMapper articleMapper, KbArticleVersionMapper versionMapper,
                           KbAuditRecordMapper auditRecordMapper, KbArticleTagMapper articleTagMapper,
                           KbAttachmentMapper attachmentMapper, KbCategoryMapper categoryMapper,
                           KbTagMapper tagMapper, SysUserMapper userMapper, KbViewLogMapper viewLogMapper,
-                          CategoryService categoryService) {
+                          CategoryService categoryService, ApplicationEventPublisher eventPublisher) {
         this.articleMapper = articleMapper;
         this.versionMapper = versionMapper;
         this.auditRecordMapper = auditRecordMapper;
@@ -92,6 +95,7 @@ public class ArticleService {
         this.userMapper = userMapper;
         this.viewLogMapper = viewLogMapper;
         this.categoryService = categoryService;
+        this.eventPublisher = eventPublisher;
     }
 
     // ---------------------------------------------------------------- 查询
@@ -271,6 +275,8 @@ public class ArticleService {
         get(id);
         articleTagMapper.delete(Wrappers.<KbArticleTag>lambdaQuery().eq(KbArticleTag::getArticleId, id));
         articleMapper.deleteById(id);
+        // 删除 → 移除向量
+        eventPublisher.publishEvent(new ArticleVectorSyncEvent(id, ArticleVectorSyncEvent.Action.REMOVE));
     }
 
     @Transactional
@@ -316,6 +322,11 @@ public class ArticleService {
         record.setAuditOpinion(request.getOpinion());
         record.setAuditTime(now);
         auditRecordMapper.insert(record);
+
+        if (pass) {
+            // 审核通过即上线 → 触发向量化（事务提交后执行，失败不回滚业务）
+            eventPublisher.publishEvent(new ArticleVectorSyncEvent(id, ArticleVectorSyncEvent.Action.INDEX));
+        }
     }
 
     @Transactional
@@ -328,6 +339,8 @@ public class ArticleService {
         article.setOfflineTime(LocalDateTime.now());
         article.setOfflineReason(request == null ? null : request.getReason());
         articleMapper.updateById(article);
+        // 下线 → 移除向量（offline 文章不应再被问答命中）
+        eventPublisher.publishEvent(new ArticleVectorSyncEvent(id, ArticleVectorSyncEvent.Action.REMOVE));
     }
 
     @Transactional
@@ -339,6 +352,8 @@ public class ArticleService {
         article.setStatus(ONLINE);
         article.setOnlineTime(LocalDateTime.now());
         articleMapper.updateById(article);
+        // 重新上线 → 触发向量化
+        eventPublisher.publishEvent(new ArticleVectorSyncEvent(id, ArticleVectorSyncEvent.Action.INDEX));
     }
 
     // ---------------------------------------------------------------- 私有

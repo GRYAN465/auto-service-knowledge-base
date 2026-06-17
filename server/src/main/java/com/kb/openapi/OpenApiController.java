@@ -2,6 +2,8 @@ package com.kb.openapi;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kb.ai.QaService;
+import com.kb.ai.dto.QaVO;
 import com.kb.common.BusinessException;
 import com.kb.common.PageResult;
 import com.kb.common.Result;
@@ -15,8 +17,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,19 +30,20 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/open/v1")
 public class OpenApiController {
 
-    private static final int QA_NOT_IMPLEMENTED = 6001;
-
     private final OpenApiAuthService authService;
     private final SearchService searchService;
     private final ArticleService articleService;
     private final ObjectMapper objectMapper;
+    private final QaService qaService;
 
     public OpenApiController(OpenApiAuthService authService, SearchService searchService,
-                             ArticleService articleService, ObjectMapper objectMapper) {
+                             ArticleService articleService, ObjectMapper objectMapper,
+                             QaService qaService) {
         this.authService = authService;
         this.searchService = searchService;
         this.articleService = articleService;
         this.objectMapper = objectMapper;
+        this.qaService = qaService;
     }
 
     @Operation(summary = "对外知识检索")
@@ -91,19 +92,17 @@ public class OpenApiController {
         }
     }
 
-    @Operation(summary = "对外问答（占位）")
+    @Operation(summary = "对外问答（检索增强）")
     @PostMapping("/qa")
-    public ResponseEntity<Result<Void>> qa(@RequestBody String bodyText, HttpServletRequest request) {
+    public Result<QaVO> qa(@RequestBody String bodyText, HttpServletRequest request) {
         long start = System.currentTimeMillis();
         OpenApp app = null;
-        int code = QA_NOT_IMPLEMENTED;
-        OpenQaRequest body = null;
+        int code = 0;
         try {
             app = authService.authenticate(request, "qa", bodyText);
-            body = readQa(bodyText);
+            OpenQaRequest body = readQa(bodyText);
             validateQa(body);
-            return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED)
-                    .body(Result.fail(QA_NOT_IMPLEMENTED, "对外问答依赖二期 AI，当前为占位接口"));
+            return Result.ok(qaService.openQa(body.getQuestion(), body.getTopK()));
         } catch (BusinessException e) {
             code = e.getCode();
             throw e;

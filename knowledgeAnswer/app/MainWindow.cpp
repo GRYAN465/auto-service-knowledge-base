@@ -1,5 +1,6 @@
 #include "app/MainWindow.h"
 
+#include "app/AiConfigPage.h"
 #include "app/ArticleManagePage.h"
 #include "app/AuditCenterPage.h"
 #include "app/DashboardPage.h"
@@ -8,6 +9,7 @@
 #include "app/OpenApiPage.h"
 #include "app/PageRouter.h"
 #include "app/PlaceholderPage.h"
+#include "app/QaPage.h"
 #include "app/SearchPage.h"
 #include "app/SharePage.h"
 #include "app/StatisticsPage.h"
@@ -155,6 +157,12 @@ void MainWindow::registerPages() {
             }
             if (name == QStringLiteral("openapi")) {
                 return new OpenApiPage(title);
+            }
+            if (name == QStringLiteral("qa")) {
+                return new QaPage(title);
+            }
+            if (name == QStringLiteral("ai.config")) {
+                return new AiConfigPage(title);
             }
             return new PlaceholderPage(title, name, phase2);
         });

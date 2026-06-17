@@ -28,11 +28,33 @@ class EmbedResponse(BaseModel):
     dim: int = 0
 
 
+# ——— /ai/index：向量化并入库（解析→切分→embed→写向量库）———
+class IndexRequest(BaseModel):
+    article_id: int = Field(..., description="所属知识 ID（kb_article.id），向量库写入单位")
+    file_path: str | None = Field(
+        None, description="附件相对/绝对路径；提供则由本服务解析切分"
+    )
+    texts: list[str] | None = Field(
+        None, description="已切好的文本块；与 file_path 二选一（优先 file_path）"
+    )
+
+
+class IndexResponse(BaseModel):
+    article_id: int
+    chunk_count: int = Field(0, description="实际入库块数")
+    dim: int = Field(0, description="向量维度")
+
+
+class IndexRemoveRequest(BaseModel):
+    article_id: int = Field(..., description="下线/删除时移除该知识的全部向量块")
+
+
 # ——— /ai/qa：检索增强问答 ———
 class Citation(BaseModel):
     article_id: int
-    title: str
+    title: str  # FastAPI 侧占位「知识 #{id}」，由 Java 编排层回填真实标题
     score: float
+    snippet: str | None = Field(None, description="命中原文片段（供前端展示/核对引用）")
 
 
 class QaRequest(BaseModel):
@@ -47,3 +69,39 @@ class QaRequest(BaseModel):
 class QaResponse(BaseModel):
     answer: str
     citations: list[Citation] = []
+    mode: str = Field(
+        "extractive", description="答案来源：llm（LLM 总结）/ extractive（抽取式兜底）/ no_hit（无相关知识）"
+    )
+
+
+# ——— /ai/llm/config、/ai/llm/test：LLM 运行时配置下发与连通性测试（M9.4）———
+# Java 编排层为权威源，把管理员在客户端填写的配置下发到此，本服务应用 + 落盘自存。
+class LlmConfigPush(BaseModel):
+    base_url: str = Field("", description="OpenAI 兼容端点(通常以 /v1 结尾)")
+    api_key: str = Field("", description="API 密钥")
+    model: str = Field("", description="模型名")
+    temperature: float = Field(0.2, description="采样温度")
+    max_tokens: int = Field(1024, description="最大生成 token 数")
+
+
+class LlmConfigStatus(BaseModel):
+    """GET /ai/llm/config 回执：仅暴露非敏感状态，绝不回传 api_key。"""
+    configured: bool = Field(..., description="base_url/api_key/model 三件套是否齐备")
+    base_url: str = ""
+    model: str = ""
+    temperature: float = 0.2
+    max_tokens: int = 1024
+
+
+class LlmTestRequest(BaseModel):
+    base_url: str = Field("", description="待测端点")
+    api_key: str = Field("", description="待测密钥")
+    model: str = Field("", description="待测模型")
+    temperature: float = Field(0.2, description="采样温度")
+    max_tokens: int = Field(64, description="测试用较小的 max_tokens")
+
+
+class LlmTestResponse(BaseModel):
+    ok: bool = Field(..., description="是否连通并成功生成")
+    message: str = Field("", description="成功为模型返回文本片段，失败为错误原因")
+    latency_ms: int = Field(0, description="一次极短生成的往返耗时(毫秒)")
