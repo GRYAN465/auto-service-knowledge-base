@@ -112,12 +112,15 @@ class ChromaVectorStore(VectorStore):
         if before == 0:
             logger.info("向量库已为空，跳过清空")
             return 0
-        # Chroma 没有 truncate；用 delete(where={}) 清空全collection
-        self._col.delete(where={})
-        after = self._col.count()
-        removed = before - after
-        logger.info("向量库已清空：删除块数=%d 剩余=%d", removed, after)
-        return removed
+        # Chroma 不支持 delete(where={}) 全删；删 collection 再重建
+        name = self._col.name
+        self._client.delete_collection(name)
+        self._col = self._client.create_collection(
+            name=name,
+            metadata={"hnsw:space": "cosine"},
+        )
+        logger.info("向量库已清空：删除块数=%d（collection %s 已重建）", before, name)
+        return before
 
     @staticmethod
     def _build_where(allowed_article_ids: list[int] | None, status: str) -> dict | None:
