@@ -13,13 +13,14 @@ from fastapi import FastAPI
 from app.api import ai, health
 from app.core.config import settings
 from app.core.logging import logger, setup_logging
+from app.services.vector_store import get_vector_store
 
 setup_logging()
 
 app = FastAPI(
     title="智能客服知识库 · AI 服务",
     description="解析 / 切分 / 向量化 / 向量检索 / LLM 问答（模块 9）。M9.4 LLM 运行时配置下发已落地。",
-    version="0.4.0",
+    version="0.4.1",
 )
 
 app.include_router(health.router)
@@ -31,7 +32,7 @@ def root() -> dict:
     return {
         "service": settings.app_name,
         "status": "ok",
-        "phase": "M9.4 LLM 运行时配置下发（索引/检索 + /ai/qa + /ai/llm/config）",
+        "phase": "M9.4 LLM 运行时配置下发（索引/检索 + /ai/qa + /ai/llm/config）+ 启动自清向量库",
         "docs": "/docs",
     }
 
@@ -40,6 +41,12 @@ def root() -> dict:
 def _on_startup() -> None:
     logger.info("%s 启动（env=%s，向量库=%s）", settings.app_name, settings.env,
                 settings.vector_store_dir)
+    if settings.rebuild_on_startup:
+        vs = get_vector_store()
+        removed = vs.clear_all()
+        logger.info("启动自清：已清空 %d 条向量（Java 启动后将全量重建）", removed)
+    else:
+        logger.info("rebuild_on_startup=false，保留既有向量数据")
 
 
 if __name__ == "__main__":

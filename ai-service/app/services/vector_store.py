@@ -106,6 +106,19 @@ class ChromaVectorStore(VectorStore):
             logger.info("remove article=%d 删除块数=%d", article_id, removed)
         return removed
 
+    def clear_all(self) -> int:
+        """清空 collection 内全部向量块（启动时重置，配合 Java 全量重建）。返回清掉的块数。"""
+        before = self._col.count()
+        if before == 0:
+            logger.info("向量库已为空，跳过清空")
+            return 0
+        # Chroma 没有 truncate；用 delete(where={}) 清空全collection
+        self._col.delete(where={})
+        after = self._col.count()
+        removed = before - after
+        logger.info("向量库已清空：删除块数=%d 剩余=%d", removed, after)
+        return removed
+
     @staticmethod
     def _build_where(allowed_article_ids: list[int] | None, status: str) -> dict | None:
         conds = []

@@ -53,6 +53,10 @@ class Settings:
     llm_temperature: float = float(os.getenv("KB_AI_LLM_TEMPERATURE", "0.2"))
     llm_max_tokens: int = int(os.getenv("KB_AI_LLM_MAX_TOKENS", "1024"))
 
+    # —— 启动行为 ——
+    # 启动时是否清空向量库（默认 true），配合 Java 侧启动全量重建，保证 chroma 与 MySQL 一致。
+    rebuild_on_startup: bool = os.getenv("KB_AI_REBUILD_ON_STARTUP", "true").lower() in ("1", "true", "yes")
+
     # —— 问答检索 ——
     # 相关性下限（余弦相似度）：低于此分的命中视为不相关而丢弃，用于「无相关知识」短路。
     qa_min_score: float = float(os.getenv("KB_AI_QA_MIN_SCORE", "0.3"))
