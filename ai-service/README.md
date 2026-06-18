@@ -1,6 +1,6 @@
 # ai-service —— 智能客服知识库 AI 微服务（模块 9 智能问答）
 
-Python 3.12 + FastAPI。**M9.1 索引/检索地基 + M9.2 智能问答均已落地**：附件解析 / 切分 / 本地 bge-zh 向量化 / 写检索向量库（Chroma），以及 `/ai/qa` 检索增强问答（向量检索 + ms-agent 驱动 OpenAI 兼容 LLM 总结，**未配 LLM 时抽取式兜底**，无密钥也能端到端跑通）。环境用 **conda** 管理（`kb-ai`）。
+Python 3.12 + FastAPI。**M9.1–M9.4 全部落地**：附件解析 / 切分 / 本地 bge-zh 向量化 / Chroma 向量库 / RAG 问答（ms-agent 驱动 OpenAI 兼容 LLM）+ **LLM 运行时配置下发**（Java 推送→即时生效+落盘，无需重启）。未配 LLM 时抽取式兜底，无密钥也能端到端跑通。环境用 **conda** 管理（`kb-ai`）。
 
 技术栈锁定：Chroma（进程内嵌、落盘）+ 本地 bge-small-zh-v1.5（CPU、512 维）+ ms-agent 驱动第三方 OpenAI 兼容 LLM。
 
@@ -15,6 +15,7 @@ ai-service/
 │   └── validate_qa.py      # M9.2 端到端验证（索引→问答），默认抽取式兜底、无需 Java/LLM
 ├── models/              # 本地 embedding 模型（bge-small-zh-v1.5，gitignore）
 ├── vector_store/        # Chroma 落盘目录（gitignore，可由源文档重建）
+├── runtime_llm_config.json  # LLM 运行时配置落盘（gitignore，Java 下发后持久化，启动 overlay）
 └── app/
     ├── main.py          # FastAPI 应用 + 路由装配
     ├── api/             # health（可用）、ai（parse/embed/index/index.remove/qa 均已落地）
@@ -70,6 +71,7 @@ conda run -n kb-ai python scripts/validate_qa.py
 | `KB_AI_LLM_BASE_URL` / `KB_AI_LLM_API_KEY` / `KB_AI_LLM_MODEL` | 空 | 第三方 OpenAI 兼容 LLM（三者齐备才接入；未配则抽取式兜底） |
 | `KB_AI_LLM_TEMPERATURE` / `KB_AI_LLM_MAX_TOKENS` | `0.2` / `1024` | LLM 生成参数（经 ms-agent 按签名透传） |
 | `KB_AI_QA_MIN_SCORE` | `0.3` | 问答相关性下限；低于此分的命中丢弃（用于「无相关知识」短路） |
+| `KB_AI_RUNTIME_LLM_CONFIG` | `ai-service/runtime_llm_config.json` | LLM 运行时配置落盘路径（Java 下发后持久化，启动时 overlay 覆盖 env 默认值） |
 
 ## Java ↔ FastAPI 契约
 
@@ -80,6 +82,9 @@ conda run -n kb-ai python scripts/validate_qa.py
 | `POST /ai/index` | article_id + file_path 或 texts | article_id + chunk_count + dim | 知识上线 → 向量化并入库 | ✅ M9.1 |
 | `POST /ai/index/remove` | article_id | removed | 知识下线 → 删除向量块 | ✅ M9.1 |
 | `POST /ai/qa` | question + top_k + allowed_article_ids | answer + citations + mode | 用户提问（权限/上线过滤由 Java 完成） | ✅ M9.2 |
+| `GET /ai/llm/config` | — | configured + base_url + model + temperature + max_tokens（**无 api_key**） | Java 查询 LLM 配置状态 | ✅ M9.4 |
+| `POST /ai/llm/config` | base_url + api_key + model + temperature + max_tokens | 同上 | Java 推送 LLM 配置→即时生效+落盘 | ✅ M9.4 |
+| `POST /ai/llm/test` | base_url + api_key + model + temperature + max_tokens | ok + message + latency_ms | Java 测试 LLM 连接（临时客户端，不改单例） | ✅ M9.4 |
 
 入参/出参字段定义见 `app/schemas/ai.py`（pydantic 模型即契约）。向量库写入/检索由本服务负责；权限与上线状态过滤由 Java 编排层完成（传 `allowed_article_ids`）。
 
@@ -92,3 +97,14 @@ conda run -n kb-ai python scripts/validate_qa.py
 - `no_hit`：空问题或过滤后无相关命中，返回友好提示。
 
 `citations` 按 `article_id` 去重（同篇取最高分块）、按分数降序，含 `snippet`（命中原文片段，供前端核对）。`title` 在本服务为占位 `知识 #{id}`，真实标题由 Java 编排层（M9.3）用 `kb_article.title` 回填。ms-agent 的工具/MCP/多步能力留给后续模块 10。
+
+## LLM 运行时配置（`/ai/llm/config` + `/ai/llm/test`，M9.4）
+
+管理员在 Qt 客户端「AI 配置」页填写/测试/保存 LLM 接入配置，Java 存 DB（权威源）后推送到以下端点：
+
+- **`POST /ai/llm/config`**：接收 Java 下发的 `{base_url, api_key, model, temperature, max_tokens}` → `llm.apply_config()` 改 `settings.llm_*` + `llm.reset()` 重建单例 + 写 `runtime_llm_config.json` 落盘。若 `base_url`/`api_key`/`model` 任一为空字符串，则 `is_configured()` 为 false，问答回退抽取式。
+- **`GET /ai/llm/config`**：返回当前配置状态（`configured` + `base_url`/`model`/`temperature`/`max_tokens`），**不含 `api_key`**。
+- **`POST /ai/llm/test`**：用请求体中的候选配置建**临时** LLM 客户端做一次极短 `generate`（"回复两个字：你好"），返回 `{ok, message, latency_ms}`。**不落库、不修改运行中单例**。
+- **启动恢复**：`app/core/config.py` 在模块加载末尾调用 `_overlay_runtime_llm()`，若 `runtime_llm_config.json` 存在则覆盖 env 默认值 → Python 自身重启不丢配置。Java 侧 `LlmConfigSyncRunner`@`ApplicationReadyEvent` 在 Java 启动时补发库中已启用配置。
+
+> `runtime_llm_config.json` 含明文 `api_key`，已进 `.gitignore`。部署环境建议配置文件系统权限限制。

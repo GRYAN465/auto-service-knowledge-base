@@ -12,7 +12,7 @@ Qt Widgets 桌面客户端  ──REST/JSON(+WebSocket)──▶  Java / Spring 
 
 - **客户端** `knowledgeAnswer/`：Qt 6 + Qt Widgets + C++17 + CMake。
 - **业务后端** `server/`：Java 17 + Spring Boot 3 + Spring Security + JWT + MyBatis-Plus + Flyway，包名 `com.kb`。
-- **AI 服务** `ai-service/`：Python 3.11 + FastAPI（二期，先占位；**环境用 conda 管理**）。
+- **AI 服务** `ai-service/`：Python 3.12 + FastAPI + Chroma + bge-small-zh-v1.5 + ms-agent（二期模块 9 已落地：索引/检索/RAG 问答 + LLM 运行时配置下发；**环境用 conda 管理 `kb-ai`**）。
 
 ## 仓库结构
 
@@ -38,7 +38,7 @@ thePro/
 |---|---|
 | 客户端 | Qt 6.11（Widgets / Network / WebSockets / TextToSpeech / PDF / Multimedia）、CMake ≥ 3.16、MinGW 64-bit、Qt Creator |
 | 后端 | JDK 17、Maven 3.9+、MySQL 8、Redis（可选） |
-| AI 服务（二期） | conda、Python 3.11、FastAPI/uvicorn、向量库（pgvector/Milvus/Qdrant） |
+| AI 服务 | conda、Python 3.12、FastAPI/uvicorn、Chroma（向量库）、bge-small-zh-v1.5（embedding）、ms-agent（LLM 框架） |
 
 ## 构建与运行
 
@@ -66,11 +66,14 @@ mysql -u kb -p123456 --default-character-set=utf8mb4 kb \
   < server/src/main/resources/db/demo/demo_data.sql
 ```
 
-**AI 服务（二期）**
+**AI 服务**
 
 ```bash
-conda env create -f ai-service/environment.yml && conda activate kb-ai
-uvicorn app.main:app --reload        # /health
+conda activate kb-ai
+cd ai-service && uvicorn app.main:app --port 8000    # /health /docs
+# 可选验证（无需 Java / 无需 LLM key）：
+python scripts/validate_index.py      # M9.1 索引/检索冒烟
+python scripts/validate_qa.py         # M9.2 问答冒烟（抽取式兜底）
 ```
 
 ## 文档导航
@@ -82,5 +85,5 @@ uvicorn app.main:app --reload        # /health
 
 ## 开发阶段
 
-- **一期（知识中台核心）**：模块 1 登录鉴权+RBAC → 2 系统管理 → 3 知识基础 → 4 知识管理后台 → 5 检索+详情 → 6 知识互动 → 7 数据统计 → 8 开放 API。
-- **二期（智能与实时）**：模块 9 智能问答、10 客服实时辅助。
+- **一期（知识中台核心）**：模块 1–8 ✅ 全部完成（登录鉴权+RBAC / 系统管理 / 知识基础 / 知识管理后台 / 检索+详情 / 知识互动 / 数据统计 / 开放 API）。
+- **二期（智能与实时）**：模块 9 智能问答闭环 ✅ 已完成（M9.0–M9.4：向量检索 / RAG / Qt 问答页 / 管理员 LLM 运行时配置）；模块 10 客服实时辅助 ⬜ 待启动。

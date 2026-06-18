@@ -3,7 +3,7 @@
 > 配套《总体开发计划.md》§5、《数据库表清单.md》。本文件定通用约定 + 一期接口草案，作为前后端联调依据。逐模块开发时在此细化字段。
 > 二期接口（问答 / 实时辅助）只列规划，标 TODO。
 >
-> 最近更新：2026-06-17
+> 最近更新：2026-06-18
 
 ---
 
@@ -306,9 +306,55 @@ X-Nonce
 
 ---
 
-## 8. 二期接口（TODO）
+## 8. 智能问答 + LLM 配置（模块 9，✅ 已实现）
 
-- **问答（模块 9）**：`POST /ai/qa`（Java 编排，内部调 FastAPI）；FastAPI 侧 `POST /ai/parse`、`/ai/embed`、`/ai/qa`。
+> 模块 9 已全部落地（M9.0–M9.4）。Java 端端点前缀 `/ai`，权限码 `ai:qa`（人人可问）/ `ai:index`（管理员重建索引）/ `ai:config`（管理员 LLM 配置）。Python 内部端点前缀 `/ai`（FastAPI :8000），由 Java `AiClient`（RestClient）调用，Qt 客户端不直连。
+
+### 8.1 问答（Java `/api/ai/qa`）
+
+| 方法 | 路径 | 权限码 | 说明 |
+|---|---|---|---|
+| POST | `/ai/qa` | `ai:qa` | 提问。入参 `{question, topK?, categoryId?, sessionId?}`；出参 `{sessionId, messageId, answer, mode, citations:[{articleId,title,score,snippet}]}`。`mode` ∈ `llm`/`extractive`/`no_hit` |
+| POST | `/ai/qa/feedback` | `ai:qa` | 反馈。入参 `{messageId, helpful(Int:1赞/0踩), reason?}` |
+| GET | `/ai/qa/sessions` | `ai:qa` | 我的会话历史（`List<{id,title,createTime}>`） |
+| GET | `/ai/qa/sessions/{id}/messages` | `ai:qa` | 某会话的消息记录 |
+
+### 8.2 向量索引（Java `/api/ai/index`）
+
+| 方法 | 路径 | 权限码 | 说明 |
+|---|---|---|---|
+| POST | `/ai/index/rebuild` | `ai:index` | 重建全部 ONLINE 知识索引。出参 `{total, indexed, failed, empty}` |
+| POST | `/ai/index/rebuild/{articleId}` | `ai:index` | 重建单篇知识索引 |
+
+> 上下线自动同步：`ArticleService` 审核 PASS / online / offline / delete 发送 `ArticleVectorSyncEvent`，`ArticleIndexListener`（`@TransactionalEventListener(AFTER_COMMIT)`）同步调用 Python 索引/删除，请求会等向量化完成。
+
+### 8.3 LLM 运行时配置（Java `/api/ai/llm-config`）
+
+| 方法 | 路径 | 权限码 | 说明 |
+|---|---|---|---|
+| GET | `/ai/llm-config` | `ai:config` | 查看当前配置。返回 `{baseUrl, model, temperature, maxTokens, enabled, configured, apiKeyMasked, pushWarning?}`。**apiKey 始终返回掩码**（`sk-t****WXYZ`），绝不回传明文 |
+| PUT | `/ai/llm-config` | `ai:config` | 保存配置。入参 `{baseUrl, apiKey?, model, temperature, maxTokens, enabled}`。`apiKey` 留空=保持原值。Java 存 DB（权威源）+ best-effort 下发 Python；Python 不可用时仅存库，返回 `pushWarning` 告警 |
+| POST | `/ai/llm-config/test` | `ai:config` | 测试连接。入参同 PUT（`apiKey` 留空则用库值）。Java 转发 Python 做一次极短 ping，返回 `{ok, message, latencyMs}`。**不落库、不改运行中单例** |
+
+**配置流**：Qt → Java `PUT /api/ai/llm-config`（连字符）→ 存 `ai_llm_config`（DB 权威源）+ best-effort 下发 Python `POST /ai/llm/config`（斜杠）。Python 改 `settings.llm_*` + `llm.reset()` + 写 `runtime_llm_config.json`；启动时若该文件存在则覆盖 env 默认 → Python 自身重启不丢配置。`LlmConfigSyncRunner`@`ApplicationReadyEvent` 在 Java 启动时补发库中已启用配置。
+
+### 8.4 Python 内部端点（FastAPI `:8000/ai/*`，Java 调用）
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/ai/parse` | 解析附件文本。入参 `{article_id?, file_id?, file_path}` → `{chunks:[{index,text}]}` |
+| POST | `/ai/embed` | 取原始向量。入参 `{texts:[string]}` → `{vectors:[[float]], dim:int}` |
+| POST | `/ai/index` | 向量化并入库。入参 `{article_id, file_path?, texts?}` → `{article_id, chunk_count, dim}` |
+| POST | `/ai/index/remove` | 删除某知识的全部向量块。入参 `{article_id}` → `{removed:int}` |
+| POST | `/ai/qa` | RAG 问答（Java 调）。入参 `{question, top_k?, allowed_article_ids?}` → `{answer, mode, citations:[{article_id,title,score,snippet}]}` |
+| GET | `/ai/llm/config` | 查看当前 LLM 配置状态（**无 api_key**） |
+| POST | `/ai/llm/config` | 接收 Java 下发的 LLM 配置并即时生效 |
+| POST | `/ai/llm/test` | 用候选配置建临时客户端做极短 ping（不改单例） |
+
+---
+
+## 9. 二期待实现（TODO）
+
 - **实时辅助（模块 10）**：WebSocket `/ws/agent`（实时转写推送 + 推荐卡片）；CC/ASR 配置 `/realtime/config`。
 
-> 二期接口待模块 9、10 启动时细化。FastAPI 契约见《总体开发计划.md》§4。
+> FastAPI 契约详见 `ai-service/app/schemas/ai.py`。
