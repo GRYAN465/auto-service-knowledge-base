@@ -7,12 +7,12 @@ spring:
   application:
     name: kb-server
   datasource:
-    url: jdbc:mysql://localhost:3306/kb-server?useSSL=false&serverTimezone=UTC
-    username: dev                  # 本项目专属账号，仅授权 kb 库（用 root 建：CREATE USER 'kb'@'localhost'...）
-    password: 12345              # 本地覆盖请写 application-local.yml（已 .gitignore），勿提交真实口令
+    url: jdbc:mysql://localhost:3306/kb?useSSL=false&serverTimezone=UTC
+    username: kb                  # 本项目专属账号，仅授权 kb 库（用 root 建：CREATE USER 'kb'@'localhost'...）
+    password: 123456              # 本地覆盖请写 application-local.yml（已 .gitignore），勿提交真实口令
     driver-class-name: com.mysql.cj.jdbc.Driver
   flyway:
-    enabled: true
+    enabled: false
     locations: classpath:db/migration
     baseline-on-migrate: true
     encoding: UTF-8

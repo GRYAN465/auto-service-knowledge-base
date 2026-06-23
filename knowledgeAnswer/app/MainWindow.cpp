@@ -17,6 +17,7 @@
 #include "app/SharePage.h"
 #include "app/StatisticsPage.h"
 #include "app/SystemAdminPage.h"
+#include "common/NavTreeDelegate.h"
 #include "core/auth/Session.h"
 
 #include <QFrame>
@@ -179,9 +180,11 @@ void MainWindow::buildUi() {
     m_nav->setObjectName("NavTree");
     m_nav->setHeaderHidden(true);
     m_nav->setFixedWidth(220);
-    m_nav->setIndentation(12);
+    m_nav->setIndentation(14);
     m_nav->setRootIsDecorated(false);
     m_nav->setFrameShape(QFrame::NoFrame);
+    m_nav->setItemDelegate(new NavTreeDelegate(m_nav));
+    m_nav->setMouseTracking(true);
 
     m_stack = new QStackedWidget(body);
     m_stack->setObjectName("ContentStack");
@@ -267,10 +270,13 @@ void MainWindow::buildNav() {
                 item->setText(0, m.title);
                 item->setData(0, Qt::UserRole, m.name);
                 if (!m.children.isEmpty()) {
+                    item->setData(0, NavTreeDelegate::NavItemKindRole, QStringLiteral("group"));
                     // 父节点仅用于分组，不可选中
                     item->setFlags(item->flags() & ~Qt::ItemIsSelectable);
                     add(m.children, item);
                     item->setExpanded(true);
+                } else {
+                    item->setData(0, NavTreeDelegate::NavItemKindRole, QStringLiteral("link"));
                 }
             }
         };

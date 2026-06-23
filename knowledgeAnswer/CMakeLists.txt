@@ -97,6 +97,7 @@ set(PROJECT_SOURCES
         common/TagStyle.h           common/TagStyle.cpp
 
         common/TableStyle.h         common/TableStyle.cpp
+        common/NavTreeDelegate.h    common/NavTreeDelegate.cpp
 
 
 
