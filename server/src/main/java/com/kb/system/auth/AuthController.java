@@ -5,6 +5,7 @@ import com.kb.common.Result;
 import com.kb.common.ResultCode;
 import com.kb.security.LoginUser;
 import com.kb.security.SecurityUtils;
+import com.kb.system.auth.dto.ChangePasswordRequest;
 import com.kb.system.auth.dto.LoginRequest;
 import com.kb.system.auth.dto.MeResponse;
 import com.kb.system.auth.dto.TokenResponse;
@@ -14,6 +15,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -53,6 +55,17 @@ public class AuthController {
             throw new BusinessException(ResultCode.UNAUTHORIZED, "未登录");
         }
         return Result.ok(authService.me(loginUser.getUserId()));
+    }
+
+    @Operation(summary = "修改当前用户密码")
+    @PutMapping("/me/password")
+    public Result<Void> changePassword(@RequestBody @Valid ChangePasswordRequest request) {
+        LoginUser loginUser = SecurityUtils.getLoginUserOrNull();
+        if (loginUser == null) {
+            throw new BusinessException(ResultCode.UNAUTHORIZED, "未登录");
+        }
+        authService.changePassword(loginUser.getUserId(), request.getOldPassword(), request.getNewPassword());
+        return Result.ok();
     }
 
     /** 取客户端 IP（优先 X-Forwarded-For 首段，便于经反向代理时记录真实 IP）。 */

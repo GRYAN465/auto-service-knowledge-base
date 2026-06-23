@@ -1,6 +1,8 @@
 #include "app/DashboardPage.h"
 
 #include "app/ArticleDetailDialog.h"
+#include "app/RefreshablePage.h"
+#include "common/TableStyle.h"
 #include "core/auth/Session.h"
 #include "core/network/ApiClient.h"
 #include "core/notify/Notify.h"
@@ -81,17 +83,12 @@ DashboardPage::DashboardPage(const QString &title, QWidget *parent)
 
 void DashboardPage::buildUi() {
     auto *root = new QVBoxLayout(this);
-    root->setContentsMargins(24, 20, 24, 24);
+    root->setContentsMargins(28, 20, 28, 20);
     root->setSpacing(14);
 
     // —— 欢迎区（所有角色）——
     const CurrentUser &u = Session::instance().user();
     const QString who = u.realName.isEmpty() ? u.username : u.realName;
-    auto *hello = new QLabel(
-        QStringLiteral("你好，%1").arg(who.isEmpty() ? QStringLiteral("欢迎") : who), this);
-    hello->setObjectName("PlaceholderTitle");
-    root->addWidget(hello);
-
     const QVector<QString> &roles = Session::instance().roles();
     const QString role = roles.isEmpty() ? QString() : roleLabel(roles.first());
     const QString today =
@@ -101,26 +98,26 @@ void DashboardPage::buildUi() {
         subParts << role;
     }
     subParts << today << QStringLiteral("欢迎回到智能客服知识库");
-    auto *sub = new QLabel(subParts.join(QStringLiteral(" · ")), this);
-    sub->setObjectName("MutedLine");
-    root->addWidget(sub);
+
+    auto *banner = new QFrame(this);
+    banner->setObjectName("WelcomeBanner");
+    auto *bannerLayout = new QVBoxLayout(banner);
+    bannerLayout->setContentsMargins(24, 20, 24, 20);
+    bannerLayout->setSpacing(6);
+    auto *welcomeTitle = new QLabel(
+        QStringLiteral("你好，%1").arg(who.isEmpty() ? QStringLiteral("欢迎") : who), banner);
+    welcomeTitle->setObjectName("WelcomeTitle");
+    auto *welcomeHint = new QLabel(subParts.join(QStringLiteral(" · ")), banner);
+    welcomeHint->setObjectName("WelcomeHint");
+    bannerLayout->addWidget(welcomeTitle);
+    bannerLayout->addWidget(welcomeHint);
+    root->addWidget(banner);
 
     // —— 统计区（仅 statistics:view）——
     if (m_canStats) {
-        auto *toolbar = new QHBoxLayout();
-        auto *refreshBtn = new QPushButton(QStringLiteral("刷新"), this);
-        refreshBtn->setObjectName("GhostButton");
-        connect(refreshBtn, &QPushButton::clicked, this, [this]() {
-            loadOverview();
-            loadHotArticles();
-        });
         m_status = new QLabel(this);
         m_status->setObjectName("StatusLabel");
-        toolbar->addWidget(refreshBtn);
-        toolbar->addSpacing(12);
-        toolbar->addWidget(m_status);
-        toolbar->addStretch();
-        root->addLayout(toolbar);
+        root->addWidget(m_status);
 
         auto *grid = new QGridLayout();
         grid->setSpacing(12);
@@ -142,18 +139,10 @@ void DashboardPage::buildUi() {
         root->addWidget(hotTitle);
 
         m_hotArticles = new QTableWidget(this);
-        m_hotArticles->setObjectName("DataTable");
         m_hotArticles->setColumnCount(4);
         m_hotArticles->setHorizontalHeaderLabels({QStringLiteral("#"), QStringLiteral("标题"),
                                                   QStringLiteral("分类"), QStringLiteral("浏览")});
-        m_hotArticles->setSelectionBehavior(QAbstractItemView::SelectRows);
-        m_hotArticles->setSelectionMode(QAbstractItemView::SingleSelection);
-        m_hotArticles->setEditTriggers(QAbstractItemView::NoEditTriggers);
-        m_hotArticles->setAlternatingRowColors(true);
-        m_hotArticles->verticalHeader()->setVisible(false);
-        m_hotArticles->horizontalHeader()->setStretchLastSection(true);
-        m_hotArticles->setColumnWidth(0, 40);
-        m_hotArticles->setColumnWidth(1, 320);
+        TableStyle::configureRankedTable(m_hotArticles, 1);
         connect(m_hotArticles, &QTableWidget::doubleClicked, this, &DashboardPage::openArticleDetail);
         root->addWidget(m_hotArticles, 1);
     }
@@ -197,6 +186,13 @@ void DashboardPage::buildUi() {
     // 无统计区时让内容靠上，不被拉伸；有统计区时由热门知识表占据余白。
     if (!m_canStats) {
         root->addStretch();
+    }
+}
+
+void DashboardPage::refreshPage() {
+    if (m_canStats) {
+        loadOverview();
+        loadHotArticles();
     }
 }
 
@@ -255,6 +251,7 @@ void DashboardPage::loadHotArticles() {
             m_hotArticles->setItem(row, 3,
                                    new QTableWidgetItem(QString::number(asLong(o.value("viewCount")))));
         }
+        TableStyle::setItemTooltipFromText(m_hotArticles);
     });
 }
 

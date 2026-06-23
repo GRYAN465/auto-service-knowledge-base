@@ -15,6 +15,7 @@ import com.kb.system.role.mapper.SysRoleMapper;
 import com.kb.system.user.entity.SysUser;
 import com.kb.system.user.mapper.SysUserMapper;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.util.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -77,6 +78,22 @@ public class AuthService {
         List<SysPermission> granted = permissionService.listGranted(userId);
         List<String> permissions = List.copyOf(permissionService.extractCodes(granted));
         return new MeResponse(userVO, roles, permissions, MenuTreeBuilder.build(granted));
+    }
+
+    /** 修改密码：校验旧密码后更新 BCrypt 密文。 */
+    public void changePassword(Long userId, String oldPassword, String newPassword) {
+        SysUser user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException(ResultCode.UNAUTHORIZED, "用户不存在");
+        }
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "原密码不正确");
+        }
+        if (!StringUtils.hasText(newPassword) || newPassword.length() < 6) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "新密码至少 6 位");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userMapper.updateById(user);
     }
 
     private static void assertUserAvailable(SysUser user) {

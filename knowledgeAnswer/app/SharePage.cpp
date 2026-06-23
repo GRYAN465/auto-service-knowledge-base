@@ -1,6 +1,7 @@
 #include "app/SharePage.h"
 
 #include "app/ArticleDetailDialog.h"
+#include "common/TableStyle.h"
 #include "core/network/ApiClient.h"
 #include "core/notify/Notify.h"
 
@@ -20,15 +21,9 @@ namespace {
 
 QTableWidget *makeTable(const QStringList &headers) {
     auto *t = new QTableWidget();
-    t->setObjectName("DataTable");
     t->setColumnCount(headers.size());
     t->setHorizontalHeaderLabels(headers);
-    t->setSelectionBehavior(QAbstractItemView::SelectRows);
-    t->setSelectionMode(QAbstractItemView::SingleSelection);
-    t->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    t->setAlternatingRowColors(true);
-    t->verticalHeader()->setVisible(false);
-    t->horizontalHeader()->setStretchLastSection(true);
+    TableStyle::configureTitleTable(t, 1);
     return t;
 }
 
@@ -53,13 +48,11 @@ void SharePage::buildUi() {
 
     m_inbox = makeTable({QStringLiteral("来自"), QStringLiteral("知识"), QStringLiteral("留言"),
                          QStringLiteral("时间"), QStringLiteral("状态")});
-    m_inbox->setColumnWidth(1, 240);
     connect(m_inbox, &QTableWidget::doubleClicked, this, &SharePage::openInboxDetail);
     tabs->addTab(m_inbox, QStringLiteral("收到的分享"));
 
     m_sent = makeTable({QStringLiteral("发给"), QStringLiteral("知识"), QStringLiteral("留言"),
                         QStringLiteral("时间"), QStringLiteral("状态")});
-    m_sent->setColumnWidth(1, 240);
     tabs->addTab(m_sent, QStringLiteral("我发出的"));
 
     root->addWidget(tabs, 1);
@@ -107,6 +100,7 @@ void SharePage::loadInbox() {
                                                               ? QStringLiteral("已读")
                                                               : QStringLiteral("未读")));
         }
+        TableStyle::setItemTooltipFromText(m_inbox);
     });
 }
 
@@ -131,6 +125,7 @@ void SharePage::loadSent() {
                                                              ? QStringLiteral("对方已读")
                                                              : QStringLiteral("未读")));
         }
+        TableStyle::setItemTooltipFromText(m_sent);
     });
 }
 

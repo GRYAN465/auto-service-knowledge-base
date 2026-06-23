@@ -177,8 +177,13 @@ public class ArticleService {
         vo.setStatus(a.getStatus());
         vo.setSource(a.getSource());
         vo.setAuthorId(a.getAuthorId());
-        vo.setAuthorName(a.getAuthorId() == null ? null
-                : userNameMap(Set.of(a.getAuthorId())).get(a.getAuthorId()));
+        if (a.getAuthorId() != null) {
+            SysUser author = userMapper.selectById(a.getAuthorId());
+            if (author != null) {
+                vo.setAuthorName(StringUtils.hasText(author.getRealName()) ? author.getRealName() : author.getUsername());
+                vo.setAuthorUsername(author.getUsername());
+            }
+        }
         vo.setCurrentVersion(a.getCurrentVersion());
         vo.setOnlineTime(a.getOnlineTime());
         vo.setOfflineTime(a.getOfflineTime());
@@ -233,6 +238,21 @@ public class ArticleService {
         return versionMapper.selectList(Wrappers.<KbArticleVersion>lambdaQuery()
                 .eq(KbArticleVersion::getArticleId, id)
                 .orderByDesc(KbArticleVersion::getVersionNo));
+    }
+
+    /** 当前用户发布的知识（个人中心 Tab）。 */
+    public PageResult<KbArticle> minePage(long page, long pageSize, String status) {
+        Long userId = SecurityUtils.getUserIdOrNull();
+        if (userId == null) {
+            throw new BusinessException(ResultCode.UNAUTHORIZED, "未登录");
+        }
+        IPage<KbArticle> data = articleMapper.selectPage(new Page<>(page, pageSize),
+                Wrappers.<KbArticle>lambdaQuery()
+                        .eq(KbArticle::getAuthorId, userId)
+                        .eq(StringUtils.hasText(status), KbArticle::getStatus, status)
+                        .orderByDesc(KbArticle::getUpdateTime)
+                        .orderByDesc(KbArticle::getId));
+        return new PageResult<>(data.getTotal(), data.getCurrent(), data.getSize(), data.getRecords());
     }
 
     // ---------------------------------------------------------------- 写入

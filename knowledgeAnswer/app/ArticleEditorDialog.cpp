@@ -1,5 +1,6 @@
 #include "app/ArticleEditorDialog.h"
 
+#include "common/TableStyle.h"
 #include "core/network/ApiClient.h"
 #include "core/notify/Notify.h"
 
@@ -174,14 +175,10 @@ void ArticleEditorDialog::buildUi() {
     m_attachHint = new QLabel(QStringLiteral("附件"), this);
     root->addWidget(m_attachHint);
     m_attachTable = new QTableWidget(this);
-    m_attachTable->setObjectName("DataTable");
     m_attachTable->setColumnCount(4);
     m_attachTable->setHorizontalHeaderLabels(
         {QStringLiteral("文件名"), QStringLiteral("类型"), QStringLiteral("大小"), QStringLiteral("下载")});
-    m_attachTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-    m_attachTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    m_attachTable->verticalHeader()->setVisible(false);
-    m_attachTable->horizontalHeader()->setStretchLastSection(true);
+    TableStyle::configureTitleTable(m_attachTable, 0);
     m_attachTable->setMaximumHeight(140);
     root->addWidget(m_attachTable);
 
@@ -362,6 +359,7 @@ void ArticleEditorDialog::refreshAttachments() {
             m_attachTable->setItem(row, 3, new QTableWidgetItem(
                 QString::number(static_cast<qint64>(o.value("downloadCount").toDouble()))));
         }
+        TableStyle::setItemTooltipFromText(m_attachTable);
     });
 }
 

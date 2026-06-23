@@ -1,6 +1,8 @@
 #include "app/FavoritePage.h"
 
 #include "app/ArticleDetailDialog.h"
+#include "app/RefreshablePage.h"
+#include "common/TableStyle.h"
 #include "core/auth/Session.h"
 #include "core/network/ApiClient.h"
 #include "core/notify/Notify.h"
@@ -42,14 +44,10 @@ void FavoritePage::buildUi() {
     root->setSpacing(14);
 
     auto *toolbar = new QHBoxLayout();
-    auto *refreshBtn = new QPushButton(QStringLiteral("刷新"), this);
-    refreshBtn->setObjectName("GhostButton");
-    connect(refreshBtn, &QPushButton::clicked, this, &FavoritePage::refresh);
     m_unfavBtn = new QPushButton(QStringLiteral("取消收藏"), this);
     m_unfavBtn->setObjectName("GhostButton");
     m_unfavBtn->setEnabled(Session::instance().hasPermission("interaction:favorite"));
     connect(m_unfavBtn, &QPushButton::clicked, this, &FavoritePage::unfavorite);
-    toolbar->addWidget(refreshBtn);
     toolbar->addWidget(m_unfavBtn);
     toolbar->addStretch();
     root->addLayout(toolbar);
@@ -59,20 +57,17 @@ void FavoritePage::buildUi() {
     root->addWidget(m_status);
 
     m_table = new QTableWidget(this);
-    m_table->setObjectName("DataTable");
     m_table->setColumnCount(5);
     m_table->setHorizontalHeaderLabels({QStringLiteral("标题"), QStringLiteral("分类"),
                                         QStringLiteral("类型"), QStringLiteral("收藏夹"),
                                         QStringLiteral("收藏时间")});
-    m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
-    m_table->setSelectionMode(QAbstractItemView::SingleSelection);
-    m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    m_table->setAlternatingRowColors(true);
-    m_table->verticalHeader()->setVisible(false);
-    m_table->horizontalHeader()->setStretchLastSection(true);
-    m_table->setColumnWidth(0, 320);
+    TableStyle::configureTitleTable(m_table, 0);
     root->addWidget(m_table, 1);
     connect(m_table, &QTableWidget::doubleClicked, this, &FavoritePage::openDetail);
+}
+
+void FavoritePage::refreshPage() {
+    refresh();
 }
 
 void FavoritePage::refresh() {
@@ -97,6 +92,7 @@ void FavoritePage::refresh() {
             m_table->setItem(row, 3, new QTableWidgetItem(o.value("folder").toString()));
             m_table->setItem(row, 4, new QTableWidgetItem(o.value("createTime").toString().replace('T', ' ')));
         }
+        TableStyle::setItemTooltipFromText(m_table);
         setStatus(QStringLiteral("共 %1 条收藏").arg(static_cast<qint64>(d.value("total").toDouble())));
     });
 }

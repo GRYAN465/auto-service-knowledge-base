@@ -1,5 +1,7 @@
 #pragma once
 
+#include "app/RefreshablePage.h"
+
 #include <QJsonObject>
 #include <QWidget>
 
@@ -16,11 +18,13 @@ namespace kb {
  *   - 管理开放应用 AppKey/AppSecret、启停、限流和 scope
  *   - 对接 /openapi/app，按钮权限使用 openapi:app:*
  */
-class OpenApiPage : public QWidget {
+class OpenApiPage : public QWidget, public RefreshablePage {
     Q_OBJECT
 
 public:
     explicit OpenApiPage(const QString &title, QWidget *parent = nullptr);
+
+    void refreshPage() override;
 
 private:
     void buildUi();

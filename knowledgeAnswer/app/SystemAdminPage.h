@@ -1,5 +1,7 @@
 #pragma once
 
+#include "app/RefreshablePage.h"
+
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QWidget>
@@ -13,11 +15,13 @@ class QTabWidget;
 
 namespace kb {
 
-class SystemAdminPage : public QWidget {
+class SystemAdminPage : public QWidget, public RefreshablePage {
     Q_OBJECT
 
 public:
     explicit SystemAdminPage(const QString &title, const QString &routeName, QWidget *parent = nullptr);
+
+    void refreshPage() override;
 
 private:
     void buildUi();

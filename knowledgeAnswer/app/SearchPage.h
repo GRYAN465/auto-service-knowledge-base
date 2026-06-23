@@ -1,21 +1,25 @@
 #pragma once
 
+#include <QJsonArray>
 #include <QWidget>
 
-class QComboBox;
+class QFrame;
+class QHBoxLayout;
 class QLabel;
 class QLineEdit;
 class QPushButton;
-class QTableWidget;
+class QScrollArea;
+class QStackedWidget;
+class QVBoxLayout;
 
 namespace kb {
 
+class ArticleDetailPanel;
+class UserProfilePanel;
+
 /**
- * 知识检索页（模块 5，路由 knowledge.search）：
- *   - 顶部筛选栏（关键词 / 分类 / 标签），回车或「检索」触发
- *   - 结果列表（标题 / 分类 / 类型 / 作者 / 浏览 / 更新时间），仅含已上线知识
- *   - 双击行打开只读详情弹窗（ArticleDetailDialog，打开即埋点浏览）
- * 走 GET /search/article；富文本/附件下载在详情弹窗内完成。
+ * 知识社区页（路由 knowledge.search）：
+ *   顶栏搜索 + 最新/最热 + 常用标签 + FeedCard 无限滚动。
  */
 class SearchPage : public QWidget {
     Q_OBJECT
@@ -25,19 +29,36 @@ public:
 
 private:
     void buildUi();
-    void loadFilters();
-    void refresh();
-    void openDetail();
-
-    qint64 selectedId() const;
-    void setStatus(const QString &text, bool error = false);
+    void loadTagOptions();
+    void rebuildTagButtons();
+    void resetFeed();
+    void loadMore();
+    void setSortHot(bool hot);
+    void polishSortButtons();
+    void openDetail(qint64 articleId);
+    void openProfile(qint64 userId);
 
     QString m_title;
-    QLineEdit *m_keyword = nullptr;
-    QComboBox *m_categoryFilter = nullptr;
-    QComboBox *m_tagFilter = nullptr;
-    QTableWidget *m_table = nullptr;
+    QStackedWidget *m_stack = nullptr;
+    QWidget *m_listPage = nullptr;
+    ArticleDetailPanel *m_detail = nullptr;
+    UserProfilePanel *m_profile = nullptr;
+
+    QLineEdit *m_search = nullptr;
+    QPushButton *m_latestBtn = nullptr;
+    QPushButton *m_hotBtn = nullptr;
+    QHBoxLayout *m_tagBtnRow = nullptr;
+    QVBoxLayout *m_feedLayout = nullptr;
+    QScrollArea *m_feedScroll = nullptr;
     QLabel *m_status = nullptr;
+
+    bool m_sortHot = false;
+    qint64 m_tagFilter = 0;
+    bool m_loading = false;
+    bool m_hasMore = true;
+    int m_loaded = 0;
+    long m_total = 0;
+    QJsonArray m_allTags;
 };
 
 } // namespace kb

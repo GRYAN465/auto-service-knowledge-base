@@ -29,4 +29,8 @@ void PageRouter::navigate(const QString &name) {
     m_stack->setCurrentWidget(page);
 }
 
+QWidget *PageRouter::currentWidget() const {
+    return m_stack ? m_stack->currentWidget() : nullptr;
+}
+
 } // namespace kb

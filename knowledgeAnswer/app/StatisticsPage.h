@@ -1,5 +1,7 @@
 #pragma once
 
+#include "app/RefreshablePage.h"
+
 #include <QWidget>
 
 class QComboBox;
@@ -15,11 +17,13 @@ namespace kb {
  *   - GET /statistics/hot-keyword 热门搜索词（可切换近 7/30/90 天 / 全部时间窗）
  * 纯只读看板；统一复用 app.qss 主题（StatCard / DataTable / SectionTitle / MutedLine），不引入图表依赖。
  */
-class StatisticsPage : public QWidget {
+class StatisticsPage : public QWidget, public RefreshablePage {
     Q_OBJECT
 
 public:
     explicit StatisticsPage(const QString &title, QWidget *parent = nullptr);
+
+    void refreshPage() override;
 
 private:
     void buildUi();

@@ -1,5 +1,7 @@
 #include "app/MainWindow.h"
 
+#include "app/RefreshablePage.h"
+
 #include "app/AiConfigPage.h"
 #include "app/ArticleManagePage.h"
 #include "app/AuditCenterPage.h"
@@ -9,6 +11,7 @@
 #include "app/OpenApiPage.h"
 #include "app/PageRouter.h"
 #include "app/PlaceholderPage.h"
+#include "app/ProfilePage.h"
 #include "app/QaPage.h"
 #include "app/SearchPage.h"
 #include "app/SharePage.h"
@@ -41,6 +44,51 @@ void walkMenus(const QVector<MenuItem> &items,
         }
     }
 }
+
+QTreeWidgetItem *findNavItemByRoute(QTreeWidget *nav, const QString &route) {
+    if (!nav || route.isEmpty()) {
+        return nullptr;
+    }
+    for (QTreeWidgetItemIterator it(nav); *it; ++it) {
+        if ((*it)->data(0, Qt::UserRole).toString() == route) {
+            return *it;
+        }
+    }
+    return nullptr;
+}
+
+QTreeWidgetItem *findFirstNavigableItem(QTreeWidget *nav, const PageRouter *router) {
+    if (!nav || !router) {
+        return nullptr;
+    }
+    for (QTreeWidgetItemIterator it(nav); *it; ++it) {
+        QTreeWidgetItem *item = *it;
+        const QString route = item->data(0, Qt::UserRole).toString();
+        if (route.isEmpty() || !router->hasPage(route)) {
+            continue;
+        }
+        if (item->flags() & Qt::ItemIsSelectable) {
+            return item;
+        }
+    }
+    return nullptr;
+}
+
+QTreeWidgetItem *pickInitialNavItem(QTreeWidget *nav, const PageRouter *router) {
+    static const QStringList preferred = {
+        QStringLiteral("dashboard"),
+        QStringLiteral("knowledge.search"),
+    };
+    for (const QString &route : preferred) {
+        if (!router->hasPage(route)) {
+            continue;
+        }
+        if (QTreeWidgetItem *item = findNavItemByRoute(nav, route)) {
+            return item;
+        }
+    }
+    return findFirstNavigableItem(nav, router);
+}
 } // namespace
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
@@ -68,11 +116,24 @@ void MainWindow::buildUi() {
     m_pageTitle = new QLabel(QString(), topBar);
     m_pageTitle->setObjectName("PageTitle");
 
+    m_refreshBtn = new QPushButton(QStringLiteral("刷新"), topBar);
+    m_refreshBtn->setObjectName("GhostButton");
+    m_refreshBtn->setCursor(Qt::PointingHandCursor);
+    m_refreshBtn->setVisible(false);
+    connect(m_refreshBtn, &QPushButton::clicked, this, [this]() {
+        if (auto *page = dynamic_cast<RefreshablePage *>(m_router->currentWidget())) {
+            page->refreshPage();
+        }
+    });
+
     const CurrentUser &u = Session::instance().user();
     QString badge = u.realName.isEmpty() ? u.username
                                          : QStringLiteral("%1（%2）").arg(u.realName, u.username);
-    auto *userBadge = new QLabel(badge, topBar);
-    userBadge->setObjectName("UserBadge");
+    auto *userBtn = new QPushButton(badge, topBar);
+    userBtn->setObjectName("GhostButton");
+    userBtn->setFlat(true);
+    userBtn->setCursor(Qt::PointingHandCursor);
+    connect(userBtn, &QPushButton::clicked, this, [this]() { navigateToRoute(QStringLiteral("personal.center")); });
 
     auto *logout = new QPushButton(QStringLiteral("退出登录"), topBar);
     logout->setObjectName("GhostButton");
@@ -80,8 +141,31 @@ void MainWindow::buildUi() {
     connect(logout, &QPushButton::clicked, this, &MainWindow::loggedOut);
 
     topLayout->addWidget(m_pageTitle);
+    topLayout->addSpacing(12);
+    topLayout->addWidget(m_refreshBtn);
     topLayout->addStretch();
-    topLayout->addWidget(userBadge);
+
+    const QVector<QString> &roles = Session::instance().roles();
+    if (!roles.isEmpty()) {
+        QString roleText = roles.first();
+        if (roleText == QStringLiteral("ADMIN")) {
+            roleText = QStringLiteral("管理员");
+        } else if (roleText == QStringLiteral("KNOWLEDGE_ADMIN")) {
+            roleText = QStringLiteral("知识管理员");
+        } else if (roleText == QStringLiteral("AUDITOR")) {
+            roleText = QStringLiteral("审核员");
+        } else if (roleText == QStringLiteral("AGENT")) {
+            roleText = QStringLiteral("坐席");
+        } else if (roleText == QStringLiteral("USER")) {
+            roleText = QStringLiteral("普通用户");
+        }
+        auto *roleBadge = new QLabel(roleText, topBar);
+        roleBadge->setObjectName("RoleBadge");
+        topLayout->addWidget(roleBadge);
+        topLayout->addSpacing(12);
+    }
+
+    topLayout->addWidget(userBtn);
     topLayout->addSpacing(14);
     topLayout->addWidget(logout);
 
@@ -143,6 +227,9 @@ void MainWindow::registerPages() {
             if (name == QStringLiteral("knowledge.search")) {
                 return new SearchPage(title);
             }
+            if (name == QStringLiteral("personal.center")) {
+                return new ProfilePage(title);
+            }
             if (name == QStringLiteral("favorite")) {
                 return new FavoritePage(title);
             }
@@ -189,14 +276,8 @@ void MainWindow::buildNav() {
         };
     add(Session::instance().menus(), nullptr);
 
-    // 默认选中首个可导航项
-    for (int i = 0; i < m_nav->topLevelItemCount(); ++i) {
-        QTreeWidgetItem *item = m_nav->topLevelItem(i);
-        const QString name = item->data(0, Qt::UserRole).toString();
-        if (m_router->hasPage(name)) {
-            m_nav->setCurrentItem(item);
-            break;
-        }
+    if (QTreeWidgetItem *initial = pickInitialNavItem(m_nav, m_router)) {
+        m_nav->setCurrentItem(initial);
     }
 }
 
@@ -211,6 +292,15 @@ void MainWindow::navigateToCurrent() {
     }
     m_router->navigate(name);
     m_pageTitle->setText(item->text(0));
+    updateTopBarRefresh();
+}
+
+void MainWindow::updateTopBarRefresh() {
+    if (!m_refreshBtn || !m_router) {
+        return;
+    }
+    const bool canRefresh = dynamic_cast<RefreshablePage *>(m_router->currentWidget()) != nullptr;
+    m_refreshBtn->setVisible(canRefresh);
 }
 
 void MainWindow::navigateToRoute(const QString &name) {

@@ -28,6 +28,8 @@ public:
     /** 切到指定页；首次访问时由工厂创建并加入栈。 */
     void navigate(const QString &name);
 
+    QWidget *currentWidget() const;
+
 private:
     QStackedWidget *m_stack;
     QHash<QString, Factory> m_factories;

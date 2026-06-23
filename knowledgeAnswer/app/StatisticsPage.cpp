@@ -1,6 +1,8 @@
 #include "app/StatisticsPage.h"
 
 #include "app/ArticleDetailDialog.h"
+#include "app/RefreshablePage.h"
+#include "common/TableStyle.h"
 #include "core/auth/Session.h"
 #include "core/network/ApiClient.h"
 #include "core/notify/Notify.h"
@@ -52,15 +54,9 @@ QFrame *makeCard(const QString &caption, QLabel *&valueLabel, QWidget *parent) {
 }
 
 void setupTable(QTableWidget *table, const QStringList &headers) {
-    table->setObjectName("DataTable");
     table->setColumnCount(headers.size());
     table->setHorizontalHeaderLabels(headers);
-    table->setSelectionBehavior(QAbstractItemView::SelectRows);
-    table->setSelectionMode(QAbstractItemView::SingleSelection);
-    table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    table->setAlternatingRowColors(true);
-    table->verticalHeader()->setVisible(false);
-    table->horizontalHeader()->setStretchLastSection(true);
+    TableStyle::applyDataTable(table);
 }
 
 } // namespace
@@ -76,18 +72,9 @@ void StatisticsPage::buildUi() {
     root->setContentsMargins(24, 20, 24, 24);
     root->setSpacing(14);
 
-    // 工具栏：刷新 + 状态
-    auto *toolbar = new QHBoxLayout();
-    auto *refreshBtn = new QPushButton(QStringLiteral("刷新"), this);
-    refreshBtn->setObjectName("GhostButton");
-    connect(refreshBtn, &QPushButton::clicked, this, &StatisticsPage::refresh);
     m_status = new QLabel(this);
     m_status->setObjectName("StatusLabel");
-    toolbar->addWidget(refreshBtn);
-    toolbar->addSpacing(12);
-    toolbar->addWidget(m_status);
-    toolbar->addStretch();
-    root->addLayout(toolbar);
+    root->addWidget(m_status);
 
     // 指标卡：2 行 × 4 列
     auto *grid = new QGridLayout();
@@ -126,8 +113,7 @@ void StatisticsPage::buildUi() {
     setupTable(m_hotArticles, {QStringLiteral("#"), QStringLiteral("标题"), QStringLiteral("分类"),
                                QStringLiteral("类型"), QStringLiteral("浏览"), QStringLiteral("收藏"),
                                QStringLiteral("评论")});
-    m_hotArticles->setColumnWidth(0, 40);
-    m_hotArticles->setColumnWidth(1, 260);
+    TableStyle::configureRankedTable(m_hotArticles, 1);
     connect(m_hotArticles, &QTableWidget::doubleClicked, this, &StatisticsPage::openArticleDetail);
     leftBox->addWidget(hotTitle);
     leftBox->addWidget(m_hotArticles, 1);
@@ -150,13 +136,17 @@ void StatisticsPage::buildUi() {
     m_hotKeywords = new QTableWidget(this);
     setupTable(m_hotKeywords, {QStringLiteral("#"), QStringLiteral("搜索词"),
                                QStringLiteral("次数"), QStringLiteral("无结果")});
-    m_hotKeywords->setColumnWidth(0, 40);
+    TableStyle::configureRankedTable(m_hotKeywords, 1);
     rightBox->addLayout(kwHeader);
     rightBox->addWidget(m_hotKeywords, 1);
 
     panels->addLayout(leftBox, 3);
     panels->addLayout(rightBox, 2);
     root->addLayout(panels, 1);
+}
+
+void StatisticsPage::refreshPage() {
+    refresh();
 }
 
 void StatisticsPage::refresh() {
@@ -231,6 +221,7 @@ void StatisticsPage::loadHotArticles() {
             m_hotArticles->setItem(row, 5, new QTableWidgetItem(QString::number(asLong(o.value("favoriteCount")))));
             m_hotArticles->setItem(row, 6, new QTableWidgetItem(QString::number(asLong(o.value("commentCount")))));
         }
+        TableStyle::setItemTooltipFromText(m_hotArticles);
     });
 }
 
@@ -256,6 +247,7 @@ void StatisticsPage::loadHotKeywords() {
             m_hotKeywords->setItem(row, 2, new QTableWidgetItem(QString::number(asLong(o.value("searchCount")))));
             m_hotKeywords->setItem(row, 3, new QTableWidgetItem(QString::number(asLong(o.value("zeroCount")))));
         }
+        TableStyle::setItemTooltipFromText(m_hotKeywords);
     });
 }
 

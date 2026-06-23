@@ -1,5 +1,7 @@
 #pragma once
 
+#include "app/RefreshablePage.h"
+
 #include <QWidget>
 
 class QLabel;
@@ -14,11 +16,13 @@ namespace kb {
  *     今日动态、热门知识 TOP5（双击开只读详情）。数据复用 /statistics/overview、/statistics/hot-article。
  * 无 statistics:view 的角色不发起 /statistics/* 请求，避免 2003。统一复用 app.qss 主题。
  */
-class DashboardPage : public QWidget {
+class DashboardPage : public QWidget, public RefreshablePage {
     Q_OBJECT
 
 public:
     explicit DashboardPage(const QString &title, QWidget *parent = nullptr);
+
+    void refreshPage() override;
 
 signals:
     /** 请求切换到指定路由（由 MainWindow 接到左侧导航树）。 */

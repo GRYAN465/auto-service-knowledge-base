@@ -1,5 +1,7 @@
 #include "app/AuditCenterPage.h"
 
+#include "app/RefreshablePage.h"
+#include "common/TableStyle.h"
 #include "core/auth/Session.h"
 #include "core/network/ApiClient.h"
 #include "core/notify/Notify.h"
@@ -34,20 +36,16 @@ void AuditCenterPage::buildUi() {
     auto *toolbar = new QHBoxLayout();
     m_pass = new QPushButton(QStringLiteral("通过"), this);
     m_reject = new QPushButton(QStringLiteral("驳回"), this);
-    auto *refreshButton = new QPushButton(QStringLiteral("刷新"), this);
     m_pass->setObjectName("PrimaryButton");
     m_reject->setObjectName("GhostButton");
-    refreshButton->setObjectName("GhostButton");
     toolbar->addWidget(m_pass);
     toolbar->addWidget(m_reject);
     toolbar->addStretch();
-    toolbar->addWidget(refreshButton);
     root->addLayout(toolbar);
 
     const bool canAudit = Session::instance().hasPermission(QStringLiteral("knowledge:article:audit"));
     m_pass->setEnabled(canAudit);
     m_reject->setEnabled(canAudit);
-    connect(refreshButton, &QPushButton::clicked, this, &AuditCenterPage::refresh);
     connect(m_pass, &QPushButton::clicked, this, &AuditCenterPage::pass);
     connect(m_reject, &QPushButton::clicked, this, &AuditCenterPage::reject);
 
@@ -57,17 +55,10 @@ void AuditCenterPage::buildUi() {
 
     auto *splitter = new QSplitter(Qt::Horizontal, this);
     m_table = new QTableWidget(splitter);
-    m_table->setObjectName("DataTable");
     m_table->setColumnCount(4);
     m_table->setHorizontalHeaderLabels({QStringLiteral("标题"), QStringLiteral("类型"),
                                         QStringLiteral("作者"), QStringLiteral("更新时间")});
-    m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
-    m_table->setSelectionMode(QAbstractItemView::SingleSelection);
-    m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    m_table->setAlternatingRowColors(true);
-    m_table->verticalHeader()->setVisible(false);
-    m_table->horizontalHeader()->setStretchLastSection(true);
-    m_table->setColumnWidth(0, 240);
+    TableStyle::configureTitleTable(m_table, 0);
     splitter->addWidget(m_table);
 
     m_preview = new QTextEdit(splitter);
@@ -80,6 +71,10 @@ void AuditCenterPage::buildUi() {
     root->addWidget(splitter, 1);
 
     connect(m_table, &QTableWidget::itemSelectionChanged, this, &AuditCenterPage::previewSelected);
+}
+
+void AuditCenterPage::refreshPage() {
+    refresh();
 }
 
 void AuditCenterPage::refresh() {
@@ -105,6 +100,7 @@ void AuditCenterPage::refresh() {
             m_table->setItem(row, 2, new QTableWidgetItem(o.value("authorName").toString()));
             m_table->setItem(row, 3, new QTableWidgetItem(o.value("updateTime").toString().replace('T', ' ')));
         }
+        TableStyle::setItemTooltipFromText(m_table);
         setStatus(QStringLiteral("待审核 %1 条").arg(static_cast<qint64>(d.value("total").toDouble())));
     });
 }

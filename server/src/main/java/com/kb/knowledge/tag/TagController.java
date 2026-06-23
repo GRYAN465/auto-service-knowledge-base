@@ -38,6 +38,13 @@ public class TagController {
         return Result.ok(tagService.page(page, pageSize, keyword));
     }
 
+    @Operation(summary = "标签下拉选项（社区常用标签，按 sort）")
+    @GetMapping("/options")
+    @PreAuthorize("hasAuthority('knowledge:search')")
+    public Result<java.util.List<KbTag>> options() {
+        return Result.ok(tagService.listOptions());
+    }
+
     @Operation(summary = "标签详情")
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('knowledge:tag:list')")

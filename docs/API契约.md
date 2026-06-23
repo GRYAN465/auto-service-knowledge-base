@@ -3,7 +3,7 @@
 > 配套《总体开发计划.md》§5、《数据库表清单.md》。本文件定通用约定 + 一期接口草案，作为前后端联调依据。逐模块开发时在此细化字段。
 > 二期接口（问答 / 实时辅助）只列规划，标 TODO。
 >
-> 最近更新：2026-06-18
+> 最近更新：2026-06-23（知识社区 + 个人中心，V12）
 
 ---
 
@@ -50,6 +50,7 @@
 | POST | `/auth/login` | 入参 `{username,password}`；从 `sys_user` 查账号并用 BCrypt 校验密码；校验账号启用/有效期；出参 `{token, expiresIn}` |
 | POST | `/auth/logout` | 无状态退出；客户端丢弃当前 token，服务端不维护 token 黑名单 |
 | GET | `/auth/me` | 从 DB 装配当前用户 + 角色 + **菜单树 + 权限码列表**（驱动客户端导航与按钮） |
+| PUT | `/auth/me/password` | 修改当前用户密码。入参 `{oldPassword,newPassword}`（新密码至少 6 位）；原密码错误返回 `code=1001`；**已登录即可**，无需额外权限码 |
 
 `/auth/me` 响应 `data` 形态：
 
@@ -60,7 +61,8 @@
   "permissions": ["system:user:list", "knowledge:article:create", "..."],
   "menus": [
     { "name": "dashboard", "title": "首页仪表盘", "icon": "home", "children": [] },
-    { "name": "knowledge.search", "title": "知识检索", "icon": "search", "children": [] }
+    { "name": "knowledge.search", "title": "知识检索", "icon": "search", "children": [] },
+    { "name": "personal.center", "title": "个人中心", "icon": "user", "children": [] }
   ]
 }
 ```
@@ -108,6 +110,7 @@
 | 方法 | 路径 | 权限码 | 说明 |
 |---|---|---|---|
 | GET | `/knowledge/tag?page=1&pageSize=20&keyword=` | `knowledge:tag:list` | 分页（`PageResult<KbTag>`：`total/page/pageSize/list`），`keyword` 按名称模糊 |
+| GET | `/knowledge/tag/options` | `knowledge:search` | 全量标签选项（`List<KbTag>`：`id/name/color/sort`），按 `sort` 升序；供知识社区「常用标签」pin 使用 |
 | GET | `/knowledge/tag/{id}` | `knowledge:tag:list` | 标签详情（`KbTag`） |
 | POST | `/knowledge/tag` | `knowledge:tag:create` | 新建，入参 `{name(必填、唯一), color(#RRGGBB), sort}` |
 | PUT | `/knowledge/tag/{id}` | `knowledge:tag:update` | 编辑 |
@@ -122,6 +125,7 @@
 | 方法 | 路径 | 权限码 | 说明 |
 |---|---|---|---|
 | GET | `/knowledge/article?page=&pageSize=&keyword=&categoryId=&tagId=&status=&knowledgeType=` | `:list` | 分页（`PageResult<ArticleListItemVO>`：含 categoryName/authorName/tagNames），按标题模糊 + 分类/标签/状态/类型筛选（**`categoryId` 含子分类**：展开为「自身 + 全部子孙分类」后 `IN` 过滤，与门户检索一致） |
+| GET | `/knowledge/article/mine?page=&pageSize=&status=` | 已登录 | 当前用户发布的知识（`PageResult<SearchArticleVO>`）；`status` 可选（如 `ONLINE`）；个人中心「发布的知识」Tab |
 | GET | `/knowledge/article/{id}` | `:list` | 详情（`ArticleDetailVO`：富文本正文 + 标签[{id,name,color}] + 附件列表） |
 | GET | `/knowledge/article/{id}/versions` | `:list` | 版本列表（按 versionNo 倒序） |
 | POST | `/knowledge/article` | `:create` | 新建（状态 DRAFT、source MANUAL、author 取当前用户、currentVersion=1，写 v1 版本快照） |
@@ -153,7 +157,7 @@
 
 | 方法 | 路径 | 权限码 | 说明 |
 |---|---|---|---|
-| GET | `/search/article` | `knowledge:search` | 关键词（标题/摘要/正文全文）+ 分类/标签筛选，分页，**仅 ONLINE**（模块 5）✅ 已实现，见 §5.1 |
+| GET | `/search/article` | `knowledge:search` | 关键词（标题/摘要/正文全文）+ 分类/标签/作者筛选，分页或 offset 信息流，**仅 ONLINE**（模块 5 + 知识社区）✅ 已实现，见 §5.1 |
 | GET | `/knowledge/article/{id}/view` | `knowledge:search` | 查看详情并埋点浏览（模块 5）✅ 已实现，见 §5.2 |
 | POST | `/interaction/favorite`、DELETE `/interaction/favorite/{articleId}`、GET `/interaction/favorite` | `interaction:favorite` | 收藏 / 取消 / 我的收藏分页（模块 6）✅ 已实现，见 §5.3 |
 | POST | `/interaction/like` | `interaction:like` | `{targetType(ARTICLE/COMMENT),targetId,type(1/-1)}` 赞/踩，返回最新互动态（模块 6）✅ 已实现 |
@@ -168,19 +172,53 @@
 
 > 朗读（TTS）在客户端本地用 Qt TextToSpeech，无需后端接口。
 
-### 5.1 知识检索（模块 5，已实现）
+### 5.1 知识检索 / 知识社区信息流（模块 5 + 社区页，已实现）
 
 | 方法 | 路径 | 权限码 | 说明 |
 |---|---|---|---|
-| GET | `/search/article?page=&pageSize=&keyword=&categoryId=&tagId=` | `knowledge:search` | 分页（`PageResult<ArticleListItemVO>`，同 §4.3 列表项）。**仅返回 `status=ONLINE` 知识**；`keyword` 走 MySQL `ft_art_content`（ngram 全文，覆盖 title/summary/content，自带相关度排序）；`categoryId`/`tagId` 叠加筛选（**`categoryId` 含子分类**：先把所选分类展开为「自身 + 全部子孙分类」再 `IN` 过滤，故选父/根分类可搜全其下子分类的知识；`tagId` 先反查 `kb_article_tag`）；无 `keyword` 时退化为浏览式检索，按 `view_count desc, online_time desc` 排序。每次检索写一条 `kb_search_log`（含空关键词，记 `user_id/keyword/result_count/client_ip`）。 |
+| GET | `/search/article?page=&pageSize=&keyword=&categoryId=&tagId=&authorId=&sortBy=` | `knowledge:search` | **经典分页**（`page/pageSize`）。返回 `PageResult<SearchArticleVO>` |
+| GET | `/search/article?offset=&pageSize=&keyword=&categoryId=&tagId=&authorId=&sortBy=` | `knowledge:search` | **社区信息流 offset 分页**：传 `offset` 时忽略 `page` 语义；首屏建议 `offset=0&pageSize=15`，下拉 `offset=已加载条数&pageSize=10`，避免 page 模式切换导致重复。返回 `PageResult<SearchArticleVO>` |
 
-> 权限码 `knowledge:search` 已在 `V2__seed_rbac.sql`（菜单 201「知识检索」）种入并随 V2 末尾「ADMIN 授全部权限」覆盖，模块 5 **无需新增 Flyway 迁移**。检索/浏览均为 GET，不入 `sys_operation_log`（埋点分别落 `kb_search_log`/`kb_view_log`）。
+**查询参数**：
+
+| 参数 | 说明 |
+|---|---|
+| `keyword` | 可选；MySQL ngram 全文（title/summary/content） |
+| `categoryId` | 可选；**含子分类**（展开子孙后 `IN`） |
+| `tagId` | 可选 |
+| `authorId` | 可选；他人主页「已上线知识」用此筛选 |
+| `sortBy` | 可选；`UPDATE_TIME`（默认，最新）或 `VIEW_COUNT`（最热）。有 `keyword` 时全文相关度优先 |
+| `offset` / `pageSize` | offset 模式见上；无 offset 时用 `page`（默认 1）+ `pageSize`（默认 20） |
+
+**`SearchArticleVO` 字段**：
+
+```json
+{
+  "id": 4001,
+  "title": "标题",
+  "summary": "摘要",
+  "contentPreview": "正文剥离 HTML 后前 20 字…",
+  "viewCount": 100,
+  "likeCount": 10,
+  "commentCount": 3,
+  "authorId": 1001,
+  "authorName": "张管理员",
+  "updateTime": "2026-06-20 10:00:00",
+  "tags": [{ "id": 3001, "name": "高频", "color": "#2563EB" }]
+}
+```
+
+> **仅返回 `status=ONLINE` 知识**。无 `keyword` 且无 `sortBy=VIEW_COUNT` 时按 `update_time desc`；`sortBy=VIEW_COUNT` 时按 `view_count desc`。每次检索写 `kb_search_log`。权限码 `knowledge:search` 见 V2；菜单 201「知识检索」route `knowledge.search`。
+
+### 5.1.1 原模块 5 说明（兼容）
+
+> 管理端列表仍用 `GET /knowledge/article` 返回 `ArticleListItemVO`。门户检索与社区信息流统一走 `/search/article` 返回 `SearchArticleVO`。
 
 ### 5.2 知识详情查看 + 浏览埋点（模块 5，已实现）
 
 | 方法 | 路径 | 权限码 | 说明 |
 |---|---|---|---|
-| GET | `/knowledge/article/{id}/view` | `knowledge:search` | 门户侧查看详情：返回 `ArticleDetailVO`（同 §4.3 详情，含富文本正文 + 标签[{id,name,color}] + 附件列表），同时原子 `view_count++` 并写一条 `kb_view_log`（`article_id/user_id/client_ip`）。`view_count` 自增用 `setSql` 空实体更新，**不触发审计字段自动填充**，故浏览不会改动 `update_time`（避免被浏览的知识在管理列表中被顶到最前）。返回体的 `viewCount` 已是自增后的值。 |
+| GET | `/knowledge/article/{id}/view` | `knowledge:search` | 门户侧查看详情：返回 `ArticleDetailVO`（同 §4.3 详情，含 **`authorId`/`authorName`/`authorUsername`**、富文本正文 + 标签[{id,name,color}] + 附件列表 + 互动计数），同时原子 `view_count++` 并写一条 `kb_view_log`（`article_id/user_id/client_ip`）。`view_count` 自增用 `setSql` 空实体更新，**不触发审计字段自动填充**，故浏览不会改动 `update_time`（避免被浏览的知识在管理列表中被顶到最前）。返回体的 `viewCount` 已是自增后的值。 |
 
 > 管理后台详情（`GET /knowledge/article/{id}`，权限 `knowledge:article:list`）不埋点、不自增，仅供管理/审核查看；门户阅读统一走 `/{id}/view`。
 
@@ -208,6 +246,32 @@
 > **站内通知 = 收到的分享**：本期不建独立通知表，「未读通知」即 `kb_share.read_status=0`，收件箱即 `/interaction/share/inbox`。
 > **权限**：`interaction:favorite/share/comment` 已在 `V2__seed_rbac.sql` 种入并随 V2 末尾「ADMIN 授全权」覆盖；缺失的 `interaction:like`（点赞/点踩按钮，挂菜单 201 下，id 2012）由 **`V6__seed_module6_permissions.sql`** 幂等补入并授予 ADMIN（迁移链 v5→v6，不回改 V1–V5）。读端点 `/interaction/comment`、`/interaction/state` 用 `knowledge:search`，门户阅读者即可见。互动均不入 `sys_operation_log`（`/interaction/**` 不在拦截路径，与检索/浏览一致）。
 > **注**：内置角色授权由 `V7__grant_builtin_roles.sql` 补齐——KNOWLEDGE_ADMIN/AUDITOR/AGENT/USER 此前在 `V2` 中**未被授予任何权限码**（仅 `ADMIN` 授全权），曾导致坐席等非 admin 账号访问受保护端点一律 403。V7 按职责幂等补授：知识管理员（分类·标签·知识 CRUD+附件+检索+互动）、审核员（审核+上下线+检索+互动）、坐席/普通用户（检索+收藏/赞踩/评论/分享）。模块 7 统计授权由 V8 单独补给 KNOWLEDGE_ADMIN/AUDITOR；模块 8 开放应用管理当前 V9 仅授 ADMIN，非 admin 授权按运营职责另行追加。
+
+### 5.4 个人中心 / 用户资料（知识社区配套，✅ 已实现）
+
+> 菜单 205「个人中心」route `personal.center`，挂在「知识应用」目录下，**无 permission_code**，全部登录用户可见（V12 授予内置角色 1–5）。`sys_user.favorite_private`（0 公开 / 1 仅自己可见）控制他人是否可查看收藏。
+
+| 方法 | 路径 | 权限码 | 说明 |
+|---|---|---|---|
+| GET | `/user/profile/{id}` | 已登录 | 用户资料 `UserProfileVO`：`{id, username, realName, onlineArticleCount, self, favoritePrivate?, favoritesVisible}`。`favoritePrivate` 仅 `self=true` 时返回 |
+| GET | `/user/profile/{id}/favorites?page=&pageSize=` | `knowledge:search` | 用户收藏列表（`PageResult<SearchArticleVO>`）。若目标用户开启收藏隐私且非本人，返回 `code=2003`（对方已将收藏设为隐私） |
+| PUT | `/user/profile/favorite-privacy` | 已登录 | 设置收藏隐私。入参 `{favoritePrivate: true\|false}`，仅本人 |
+
+**`UserProfileVO` 示例**：
+
+```json
+{
+  "id": 1,
+  "username": "admin",
+  "realName": "管理员",
+  "onlineArticleCount": 1,
+  "self": true,
+  "favoritePrivate": false,
+  "favoritesVisible": true
+}
+```
+
+> 个人中心「发布的知识」：本人 `GET /knowledge/article/mine`；他人主页 `GET /search/article?authorId=&sortBy=UPDATE_TIME`。顶栏用户名点击亦可导航至 `personal.center`（客户端实现）。
 
 ---
 
@@ -266,7 +330,7 @@
 
 | 方法 | 路径 | scope | 说明 |
 |---|---|---|---|
-| GET | `/open/v1/search?page=&pageSize=&keyword=&categoryId=&tagId=` | `search` | 对外检索，仅返回 ONLINE 知识列表，复用 `/search/article` 检索逻辑并写调用日志 |
+| GET | `/open/v1/search?page=&pageSize=&keyword=&categoryId=&tagId=` | `search` | 对外检索，仅返回 ONLINE 知识列表（`PageResult<SearchArticleVO>`），复用 `/search/article` 逻辑并写调用日志 |
 | GET | `/open/v1/article/{id}` | `detail` | 对外详情，仅 ONLINE 可访问；不触发门户浏览量自增 |
 | POST | `/open/v1/qa` | `qa` | 对外问答占位；二期 AI 未接入前返回 HTTP 501 + `code=6001` |
 
@@ -356,5 +420,11 @@ X-Nonce
 ## 9. 二期待实现（TODO）
 
 - **实时辅助（模块 10）**：WebSocket `/ws/agent`（实时转写推送 + 推荐卡片）；CC/ASR 配置 `/realtime/config`。
+
+### 9.1 数据库迁移（知识社区）
+
+| 版本 | 内容 |
+|---|---|
+| V12 | `sys_user.favorite_private`；菜单 205 `personal.center`；全员角色授权 |
 
 > FastAPI 契约详见 `ai-service/app/schemas/ai.py`。
