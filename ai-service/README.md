@@ -2,7 +2,7 @@
 
 Python 3.12 + FastAPI。**M9.1–M9.4 全部落地**：附件解析 / 切分 / 本地 bge-zh 向量化 / Chroma 向量库 / RAG 问答（ms-agent 驱动 OpenAI 兼容 LLM）+ **LLM 运行时配置下发**（Java 推送→即时生效+落盘，无需重启）。未配 LLM 时抽取式兜底，无密钥也能端到端跑通。环境用 **conda** 管理（`kb-ai`）。
 
-技术栈锁定：Chroma（进程内嵌、落盘）+ 本地 bge-small-zh-v1.5（CPU、512 维）+ ms-agent 驱动第三方 OpenAI 兼容 LLM。
+技术栈锁定：Chroma（进程内嵌、落盘）+ 本地 bge-small-zh-v1.5（CPU、512 维）+ 本地 bge-reranker-base 精排（CPU，可关）+ ms-agent 驱动第三方 OpenAI 兼容 LLM。
 
 ## 目录
 
@@ -13,7 +13,7 @@ ai-service/
 ├── scripts/
 │   ├── validate_index.py   # M9.1 端到端验证（解析→切分→embed→写库→检索），无需 Java/LLM
 │   └── validate_qa.py      # M9.2 端到端验证（索引→问答），默认抽取式兜底、无需 Java/LLM
-├── models/              # 本地 embedding 模型（bge-small-zh-v1.5，gitignore）
+├── models/              # 本地模型（bge-small-zh-v1.5 向量 + bge-reranker-base 精排，gitignore）
 ├── vector_store/        # Chroma 落盘目录（gitignore，可由源文档重建）
 ├── runtime_llm_config.json  # LLM 运行时配置落盘（gitignore，Java 下发后持久化，启动 overlay）
 └── app/
@@ -21,7 +21,7 @@ ai-service/
     ├── api/             # health（可用）、ai（parse/embed/index/index.remove/qa 均已落地）
     ├── core/            # config（KB_AI_* 环境变量）/ logging
     ├── schemas/         # pydantic 模型 = 与 Java 的接口契约
-    └── services/        # parser / chunker / embedding / vector_store / llm / qa（均已实现）
+    └── services/        # parser / chunker / embedding / reranker / vector_store / llm / qa（均已实现）
 ```
 
 ## 环境搭建
@@ -39,6 +39,14 @@ python -c "from modelscope import snapshot_download; snapshot_download('AI-Model
 ```
 
 > 若 `models/bge-small-zh-v1.5` 不存在，embedding 层会回退为按模型名 `BAAI/bge-small-zh-v1.5` 联网加载。
+
+精排模型 bge-reranker-base（约 1.1GB）**首次问答时自动下载**到 `models/bge-reranker-base`；也可预下载：
+
+```bash
+python -c "from modelscope import snapshot_download; snapshot_download('BAAI/bge-reranker-base', local_dir='models/bge-reranker-base')"
+```
+
+> 不想用精排（或想省去该模型）设 `KB_AI_RERANK_ENABLED=false` 即可，问答退回纯向量检索。Apple Silicon 可设 `KB_AI_RERANK_DEVICE=mps` 给精排提速。
 
 ## 运行
 
@@ -70,7 +78,13 @@ conda run -n kb-ai python scripts/validate_qa.py
 | `KB_AI_CHUNK_SIZE` / `KB_AI_CHUNK_OVERLAP` | `500` / `80` | 切分长度 / 重叠（按字符） |
 | `KB_AI_LLM_BASE_URL` / `KB_AI_LLM_API_KEY` / `KB_AI_LLM_MODEL` | 空 | 第三方 OpenAI 兼容 LLM（三者齐备才接入；未配则抽取式兜底） |
 | `KB_AI_LLM_TEMPERATURE` / `KB_AI_LLM_MAX_TOKENS` | `0.2` / `1024` | LLM 生成参数（经 ms-agent 按签名透传） |
-| `KB_AI_QA_MIN_SCORE` | `0.3` | 问答相关性下限；低于此分的命中丢弃（用于「无相关知识」短路） |
+| `KB_AI_QA_MIN_SCORE` | `0.3` | 问答相关性下限；低于此分的命中丢弃（用于「无相关知识」短路）。**仅在精排关闭时生效** |
+| `KB_AI_RETRIEVE_K` | `30` | 向量宽召回候选数（送精排）；越大召回越全、精排越慢 |
+| `KB_AI_MAX_PER_ARTICLE` | `3` | 单篇知识最多入 LLM 上下文的块数（兼顾跨篇覆盖与单篇深度） |
+| `KB_AI_RERANK_ENABLED` | `true` | 是否启用 bge-reranker 交叉编码器精排；关闭则纯向量分排序 |
+| `KB_AI_RERANK_MODEL` | `ai-service/models/bge-reranker-base` | 本地精排模型目录；缺失自动从 ModelScope 下载、失败回退 HF |
+| `KB_AI_RERANK_DEVICE` | `cpu` | 精排推理设备（Apple Silicon 可设 `mps` 提速） |
+| `KB_AI_RERANK_MIN_SCORE` | `0.3` | 精排相关性下限（sigmoid 归一 0~1）；**启用精排时取代 `KB_AI_QA_MIN_SCORE`** 做「无相关知识」短路 |
 | `KB_AI_RUNTIME_LLM_CONFIG` | `ai-service/runtime_llm_config.json` | LLM 运行时配置落盘路径（Java 下发后持久化，启动时 overlay 覆盖 env 默认值） |
 
 ## Java ↔ FastAPI 契约
@@ -90,13 +104,13 @@ conda run -n kb-ai python scripts/validate_qa.py
 
 ## 智能问答（`/ai/qa`，M9.2）
 
-检索增强问答（RAG）：`embed_query` 向量化问题 → Chroma 检索召回 → 按 `KB_AI_QA_MIN_SCORE` 过滤 → 依据召回片段作答。答案来源由出参 `mode` 标识：
+检索增强问答（RAG），两段式检索：`embed_query` 向量化问题 → Chroma **宽召回 `KB_AI_RETRIEVE_K` 条**（双塔，快但粗）→ **bge-reranker 交叉编码器精排**（拼 (问题, 片段) 直接打分，精度高）→ 按 `KB_AI_RERANK_MIN_SCORE`（精排关闭时为 `KB_AI_QA_MIN_SCORE`）过滤 → 选 Top-`top_k` 片段（**同篇可多块、单篇封顶 `KB_AI_MAX_PER_ARTICLE`**）作答。精排禁用或模型加载失败时自动退回纯向量分排序，问答不受影响。答案来源由出参 `mode` 标识：
 
 - `llm`：配齐 `KB_AI_LLM_*` 三件套时，经 **ms-agent 框架**（`service=openai`，底层即 OpenAI 兼容 `base_url`）单轮总结；system 提示约束「仅依据参考资料作答、资料不足就说没有并建议转人工」防臆造。
 - `extractive`：未配 LLM 或调用失败/空答时的**抽取式兜底**，直接返回高分原文片段；无密钥也能端到端跑通。
 - `no_hit`：空问题或过滤后无相关命中，返回友好提示。
 
-`citations` 按 `article_id` 去重（同篇取最高分块）、按分数降序，含 `snippet`（命中原文片段，供前端核对）。`title` 在本服务为占位 `知识 #{id}`，真实标题由 Java 编排层（M9.3）用 `kb_article.title` 回填。ms-agent 的工具/MCP/多步能力留给后续模块 10。
+`citations` 与送 LLM 的上下文同源，按 `article_id` 去重（同篇取最相关块）、按相关分降序，含 `snippet`（命中原文片段，供前端核对）；`score` 在启用精排时为精排分（sigmoid 归一 0~1），否则为余弦相似度。`title` 在本服务为占位 `知识 #{id}`，真实标题由 Java 编排层（M9.3）用 `kb_article.title` 回填。ms-agent 的工具/MCP/多步能力留给后续模块 10。
 
 ## LLM 运行时配置（`/ai/llm/config` + `/ai/llm/test`，M9.4）
 

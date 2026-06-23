@@ -59,7 +59,26 @@ class Settings:
 
     # —— 问答检索 ——
     # 相关性下限（余弦相似度）：低于此分的命中视为不相关而丢弃，用于「无相关知识」短路。
+    # 注：开启精排时改用 rerank_min_score 判定（精排分更可信），此项仅在精排不可用时生效。
     qa_min_score: float = float(os.getenv("KB_AI_QA_MIN_SCORE", "0.3"))
+
+    # —— 检索召回规模 ——
+    # retrieve_k：向量库宽召回候选数（送精排）；越大召回越全但精排越慢。
+    # max_per_article：单篇知识最多入 LLM 上下文的块数（兼顾跨篇覆盖与单篇深度）。
+    # 实际送 LLM 的块数 = min(请求 top_k, 精排后过阈块数)，且每篇 ≤ max_per_article。
+    retrieve_k: int = int(os.getenv("KB_AI_RETRIEVE_K", "30"))
+    max_per_article: int = int(os.getenv("KB_AI_MAX_PER_ARTICLE", "3"))
+
+    # —— 精排（Reranker，交叉编码器，检索增强）——
+    # 开启后：向量宽召回 retrieve_k 条 → 交叉编码器精排 → 取前 top_k 喂 LLM，提升 Top-K 精度。
+    # 模型缺失自动从 ModelScope 下载到 rerank_model 目录；禁用或加载失败则退回纯向量分排序。
+    rerank_enabled: bool = os.getenv("KB_AI_RERANK_ENABLED", "true").lower() in ("1", "true", "yes")
+    rerank_model: str = os.getenv(
+        "KB_AI_RERANK_MODEL", str(_BASE_DIR / "models" / "bge-reranker-base")
+    )
+    rerank_device: str = os.getenv("KB_AI_RERANK_DEVICE", "cpu")
+    # 精排相关性下限（sigmoid 归一后的 0~1 分）：低于此分丢弃，用于「无相关知识」短路。
+    rerank_min_score: float = float(os.getenv("KB_AI_RERANK_MIN_SCORE", "0.3"))
 
     # —— LLM 运行时配置落盘（M9.4）——
     # 管理员在客户端保存配置后写此文件；本服务重启时覆盖上面的 env 默认。进 .gitignore。

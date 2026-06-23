@@ -26,10 +26,13 @@ sys.path.insert(0, str(_AI_SERVICE))
 _TMP = Path(tempfile.mkdtemp(prefix="kb-ai-validate-qa-"))
 os.environ["KB_AI_VECTOR_STORE_DIR"] = str(_TMP / "vector_store")
 os.environ.setdefault("KB_AI_STORAGE_DIR", str(_TMP / "uploads"))
+# 精排默认关掉：reranker 模型（bge-reranker-base，约 1.1GB）多半未就位，开启会触发首次下载，
+# 拖慢这个「轻量、离线」冒烟脚本。需验精排链路时显式 KB_AI_RERANK_ENABLED=true 再跑。
+os.environ.setdefault("KB_AI_RERANK_ENABLED", "false")
 
 from app.core.config import settings  # noqa: E402
 from app.core.logging import setup_logging  # noqa: E402
-from app.services import chunker, embedding, llm, parser, qa  # noqa: E402
+from app.services import chunker, embedding, llm, parser, qa, reranker  # noqa: E402
 from app.services.vector_store import get_vector_store  # noqa: E402
 
 SAMPLES = {
@@ -65,6 +68,8 @@ def main() -> int:
         print(f"[index] article={article_id} {name}: chunks={len(chunks)} upserted={n}")
 
     print(f"\n[llm] is_configured={llm.is_configured()}（False 则走抽取式兜底，零令牌）")
+    print(f"[rerank] enabled={reranker.is_enabled()}"
+          f"（False 则纯向量分排序；置 KB_AI_RERANK_ENABLED=true 验精排链路）")
 
     # 正常提问
     q = "退款多久到账？"
