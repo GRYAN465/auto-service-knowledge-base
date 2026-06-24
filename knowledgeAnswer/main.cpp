@@ -8,16 +8,16 @@
 
 static void applyLightPalette(QApplication &app) {
     QPalette pal;
-    pal.setColor(QPalette::Window, QColor("#F4F6F9"));
-    pal.setColor(QPalette::WindowText, QColor("#1F2A37"));
-    pal.setColor(QPalette::Base, QColor("#FFFFFF"));
-    pal.setColor(QPalette::AlternateBase, QColor("#FAFBFC"));
-    pal.setColor(QPalette::Text, QColor("#1F2A37"));
-    pal.setColor(QPalette::Button, QColor("#FFFFFF"));
-    pal.setColor(QPalette::ButtonText, QColor("#1F2A37"));
-    pal.setColor(QPalette::Highlight, QColor("#2563EB"));
-    pal.setColor(QPalette::HighlightedText, QColor("#FFFFFF"));
-    pal.setColor(QPalette::PlaceholderText, QColor("#9098A3"));
+    pal.setColor(QPalette::Window, QColor("#FEFEFE"));
+    pal.setColor(QPalette::WindowText, QColor("#000000"));
+    pal.setColor(QPalette::Base, QColor("#FEFEFE"));
+    pal.setColor(QPalette::AlternateBase, QColor("#F3EDE4"));
+    pal.setColor(QPalette::Text, QColor("#000000"));
+    pal.setColor(QPalette::Button, QColor("#F1EEE8"));
+    pal.setColor(QPalette::ButtonText, QColor("#000000"));
+    pal.setColor(QPalette::Highlight, QColor("#F0EBE4"));
+    pal.setColor(QPalette::HighlightedText, QColor("#000000"));
+    pal.setColor(QPalette::PlaceholderText, QColor("#757575"));
     app.setPalette(pal);
 }
 

@@ -118,7 +118,7 @@ void AuditCenterPage::previewSelected() {
         QString html = QStringLiteral("<h3>%1</h3>").arg(d.value("title").toString().toHtmlEscaped());
         const QString summary = d.value("summary").toString();
         if (!summary.isEmpty()) {
-            html += QStringLiteral("<p style='color:#6B7280'>%1</p><hr>").arg(summary.toHtmlEscaped());
+            html += QStringLiteral("<p style='color:#757575'>%1</p><hr>").arg(summary.toHtmlEscaped());
         }
         html += d.value("content").toString();
         m_preview->setHtml(html);
@@ -186,7 +186,7 @@ QString AuditCenterPage::selectedTitle() const {
 
 void AuditCenterPage::setStatus(const QString &text, bool error) {
     m_status->setText(text);
-    m_status->setStyleSheet(error ? "color:#DC2626;" : "color:#6B7280;");
+    m_status->setStyleSheet(error ? "color:#B94A48;" : "color:#757575;");
     if (error && !text.isEmpty()) {
         notify::warn(this, text);
     }

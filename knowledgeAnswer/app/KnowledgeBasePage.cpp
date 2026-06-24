@@ -47,11 +47,11 @@ void styleTagColorPreview(QFrame *preview, const QString &hex) {
     const QColor c(hex);
     if (c.isValid()) {
         preview->setStyleSheet(QStringLiteral(
-            "QFrame#TagColorPreview { background-color: %1; border: 1px solid #D8DCE2; border-radius: 6px; }")
+            "QFrame#TagColorPreview { background-color: %1; border: 1px solid #E0D9CE; border-radius: 6px; }")
                                    .arg(c.name(QColor::HexRgb)));
     } else {
         preview->setStyleSheet(QStringLiteral(
-            "QFrame#TagColorPreview { background-color: #FFFFFF; border: 1px dashed #D8DCE2; border-radius: 6px; }"));
+            "QFrame#TagColorPreview { background-color: #FEFEFE; border: 1px dashed #E0D9CE; border-radius: 6px; }"));
     }
 }
 
@@ -155,7 +155,7 @@ bool runTagDialog(QWidget *parent, const QString &title, const QJsonObject &init
     QObject::connect(colorEdit, &QLineEdit::textChanged, swatch, applySwatch);
     QObject::connect(pick, &QPushButton::clicked, &dlg, [&dlg, colorEdit]() {
         QColor init(colorEdit->text().trimmed());
-        QColor c = QColorDialog::getColor(init.isValid() ? init : QColor("#2563EB"), &dlg,
+        QColor c = QColorDialog::getColor(init.isValid() ? init : QColor("#9AA69D"), &dlg,
                                           QStringLiteral("选择标签颜色"));
         if (c.isValid()) {
             colorEdit->setText(c.name().toUpper());
@@ -528,7 +528,7 @@ void KnowledgeBasePage::setCatStatus(const QString &text, bool error) {
         return;
     }
     m_catStatus->setText(text);
-    m_catStatus->setStyleSheet(error ? "color:#DC2626;" : "color:#6B7280;");
+    m_catStatus->setStyleSheet(error ? "color:#B94A48;" : "color:#757575;");
     if (error && !text.isEmpty()) {
         notify::warn(this, text);
     }
@@ -539,7 +539,7 @@ void KnowledgeBasePage::setTagStatus(const QString &text, bool error) {
         return;
     }
     m_tagStatus->setText(text);
-    m_tagStatus->setStyleSheet(error ? "color:#DC2626;" : "color:#6B7280;");
+    m_tagStatus->setStyleSheet(error ? "color:#B94A48;" : "color:#757575;");
     if (error && !text.isEmpty()) {
         notify::warn(this, text);
     }

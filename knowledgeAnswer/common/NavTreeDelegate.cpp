@@ -12,7 +12,18 @@ constexpr int kGroupRowHeight = 28;
 constexpr int kGroupSectionGap = 10;
 
 QColor linkTextColor(bool selected) {
-    return selected ? QColor("#2563EB") : QColor("#374151");
+    Q_UNUSED(selected);
+    return QColor("#000000");
+}
+
+QColor navFillColor(bool selected, bool hovered) {
+    if (selected) {
+        return QColor(154, 166, 157, 48);
+    }
+    if (hovered) {
+        return QColor(254, 254, 254, 72);
+    }
+    return Qt::transparent;
 }
 
 } // namespace
@@ -48,19 +59,16 @@ void NavTreeDelegate::paint(QPainter *painter, const QStyleOptionViewItem &optio
         font.setPixelSize(12);
         font.setWeight(QFont::DemiBold);
         painter->setFont(font);
-        painter->setPen(QColor("#94A3B8"));
+        painter->setPen(QColor("#757575"));
         const QRect textRect = rect.adjusted(10, 0, -8, 0);
         painter->drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter, text);
         painter->restore();
         return;
     }
 
-    if (selected) {
-        painter->setBrush(QColor("#E8F0FE"));
-        painter->setPen(Qt::NoPen);
-        painter->drawRoundedRect(rect, 8, 8);
-    } else if (hovered) {
-        painter->setBrush(QColor("#F0F3F8"));
+    const QColor fill = navFillColor(selected, hovered);
+    if (fill.alpha() > 0) {
+        painter->setBrush(fill);
         painter->setPen(Qt::NoPen);
         painter->drawRoundedRect(rect, 8, 8);
     }

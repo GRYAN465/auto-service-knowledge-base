@@ -44,6 +44,17 @@ QString humanSize(qint64 bytes) {
     return QStringLiteral("%1 MB").arg(bytes / (1024.0 * 1024.0), 0, 'f', 1);
 }
 
+QString wrapArticleHtml(const QString &body) {
+    return QStringLiteral(
+               "<html><head><style>"
+               "body{background:#FEFEFE;color:#000000;line-height:1.6;}"
+               "a{color:#6B7F74;}"
+               "hr{border:none;border-top:1px solid #F1EEE8;}"
+               "pre{background:#F3EDE4;border:1px solid #F1EEE8;border-radius:6px;padding:8px 10px;}"
+               "</style></head><body>%1</body></html>")
+        .arg(body);
+}
+
 qint64 asLong(const QJsonValue &v) { return static_cast<qint64>(v.toDouble()); }
 
 QString formatCommentTime(const QString &raw) {
@@ -365,7 +376,7 @@ void ArticleDetailPanel::load() {
         const QString summary = d.value("summary").toString();
         m_summaryLabel->setVisible(!summary.isEmpty());
         m_summaryLabel->setText(summary);
-        m_content->setHtml(d.value("content").toString());
+        m_content->setHtml(wrapArticleHtml(d.value("content").toString()));
 
         while (QLayoutItem *item = m_attachmentBox->takeAt(0)) {
             if (QWidget *w = item->widget()) {

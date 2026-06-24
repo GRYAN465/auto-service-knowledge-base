@@ -8,6 +8,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * 全局异常处理：把异常统一转成 {@link Result}。
@@ -43,6 +44,12 @@ public class GlobalExceptionHandler {
         // 多为唯一索引冲突（如软删行与新建行同名）：兜底成友好的参数错误，避免冒泡成 5000。
         log.warn("数据完整性约束冲突：{}", e.getMostSpecificCause().getMessage());
         return Result.fail(ResultCode.PARAM_ERROR, "数据已存在或违反唯一约束");
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public Result<Void> handleNoResource(NoResourceFoundException e) {
+        log.warn("资源不存在：{}", e.getResourcePath());
+        return Result.fail(ResultCode.PARAM_ERROR, "接口不存在：" + e.getResourcePath());
     }
 
     @ExceptionHandler(Exception.class)

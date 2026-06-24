@@ -74,9 +74,12 @@ bool routeExists(const QVector<MenuItem> &items, const QString &name) {
 DashboardPage::DashboardPage(const QString &title, QWidget *parent)
     : QWidget(parent), m_title(title) {
     m_canStats = Session::instance().hasPermission(QStringLiteral("statistics:view"));
+    m_canHotArticles = Session::instance().hasPermission(QStringLiteral("knowledge:search"));
     buildUi();
     if (m_canStats) {
         loadOverview();
+    }
+    if (m_canHotArticles) {
         loadHotArticles();
     }
 }
@@ -133,6 +136,14 @@ void DashboardPage::buildUi() {
         m_todayLine = new QLabel(this);
         m_todayLine->setObjectName("MutedLine");
         root->addWidget(m_todayLine);
+    }
+
+    if (m_canHotArticles) {
+        if (!m_status) {
+            m_status = new QLabel(this);
+            m_status->setObjectName("StatusLabel");
+            root->addWidget(m_status);
+        }
 
         auto *hotTitle = new QLabel(QStringLiteral("热门知识 · 浏览量 TOP 5"), this);
         hotTitle->setObjectName("SectionTitle");
@@ -183,8 +194,8 @@ void DashboardPage::buildUi() {
         root->addLayout(quickRow);
     }
 
-    // 无统计区时让内容靠上，不被拉伸；有统计区时由热门知识表占据余白。
-    if (!m_canStats) {
+    // 无统计区/热门区时让内容靠上；有热门表时占据余白。
+    if (!m_canStats && !m_canHotArticles) {
         root->addStretch();
     }
 }
@@ -192,6 +203,8 @@ void DashboardPage::buildUi() {
 void DashboardPage::refreshPage() {
     if (m_canStats) {
         loadOverview();
+    }
+    if (m_canHotArticles) {
         loadHotArticles();
     }
 }
@@ -280,7 +293,7 @@ void DashboardPage::setStatus(const QString &text, bool error) {
         return;
     }
     m_status->setText(text);
-    m_status->setStyleSheet(error ? "color:#DC2626;" : "color:#6B7280;");
+    m_status->setStyleSheet(error ? "color:#B94A48;" : "color:#757575;");
     if (error && !text.isEmpty()) {
         notify::warn(this, text);
     }

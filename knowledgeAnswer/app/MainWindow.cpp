@@ -176,20 +176,27 @@ void MainWindow::buildUi() {
     bodyLayout->setContentsMargins(0, 0, 0, 0);
     bodyLayout->setSpacing(0);
 
-    m_nav = new QTreeWidget(body);
+    auto *navSidebar = new QFrame(body);
+    navSidebar->setObjectName("NavSidebar");
+    navSidebar->setFixedWidth(220);
+    auto *navLayout = new QVBoxLayout(navSidebar);
+    navLayout->setContentsMargins(0, 0, 0, 0);
+    navLayout->setSpacing(0);
+
+    m_nav = new QTreeWidget(navSidebar);
     m_nav->setObjectName("NavTree");
     m_nav->setHeaderHidden(true);
-    m_nav->setFixedWidth(220);
     m_nav->setIndentation(14);
     m_nav->setRootIsDecorated(false);
     m_nav->setFrameShape(QFrame::NoFrame);
     m_nav->setItemDelegate(new NavTreeDelegate(m_nav));
     m_nav->setMouseTracking(true);
+    navLayout->addWidget(m_nav);
 
     m_stack = new QStackedWidget(body);
     m_stack->setObjectName("ContentStack");
 
-    bodyLayout->addWidget(m_nav);
+    bodyLayout->addWidget(navSidebar);
     bodyLayout->addWidget(m_stack, 1);
 
     rootLayout->addWidget(topBar);

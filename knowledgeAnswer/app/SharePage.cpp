@@ -68,13 +68,13 @@ void SharePage::loadUnread() {
     ApiClient::instance().get("/interaction/share/unread-count", [this](const ApiResponse &r) {
         if (!r.ok) {
             m_status->setText(r.message);
-            m_status->setStyleSheet("color:#DC2626;");
+            m_status->setStyleSheet("color:#B94A48;");
             return;
         }
         const qint64 unread = static_cast<qint64>(r.data.toDouble());
         m_status->setText(unread > 0 ? QStringLiteral("未读分享：%1 条").arg(unread)
                                      : QStringLiteral("没有未读分享"));
-        m_status->setStyleSheet(unread > 0 ? "color:#2563EB; font-weight:600;" : "color:#6B7280;");
+        m_status->setStyleSheet(unread > 0 ? "color:#6B7F74; font-weight:600;" : "color:#757575;");
     });
 }
 
@@ -89,7 +89,12 @@ void SharePage::loadInbox() {
             const QJsonObject o = v.toObject();
             const int row = m_inbox->rowCount();
             m_inbox->insertRow(row);
-            auto *fromItem = new QTableWidgetItem(o.value("fromUserName").toString());
+            QString fromName = o.value("fromUserName").toString();
+            if (fromName.isEmpty()) {
+                const qint64 fromId = static_cast<qint64>(o.value("fromUserId").toDouble());
+                fromName = fromId > 0 ? QStringLiteral("用户#%1").arg(fromId) : QStringLiteral("—");
+            }
+            auto *fromItem = new QTableWidgetItem(fromName);
             fromItem->setData(Qt::UserRole, o.value("articleId").toVariant());
             fromItem->setData(Qt::UserRole + 1, o.value("id").toVariant());
             m_inbox->setItem(row, 0, fromItem);
@@ -107,6 +112,8 @@ void SharePage::loadInbox() {
 void SharePage::loadSent() {
     ApiClient::instance().get("/interaction/share/sent?page=1&pageSize=50", [this](const ApiResponse &r) {
         if (!r.ok) {
+            m_status->setText(r.message);
+            m_status->setStyleSheet(QStringLiteral("color:#B94A48;"));
             return;
         }
         const QJsonArray list = r.object().value("list").toArray();
@@ -115,7 +122,12 @@ void SharePage::loadSent() {
             const QJsonObject o = v.toObject();
             const int row = m_sent->rowCount();
             m_sent->insertRow(row);
-            auto *toItem = new QTableWidgetItem(o.value("toUserName").toString());
+            QString toName = o.value("toUserName").toString();
+            if (toName.isEmpty()) {
+                const qint64 toId = static_cast<qint64>(o.value("toUserId").toDouble());
+                toName = toId > 0 ? QStringLiteral("用户#%1").arg(toId) : QStringLiteral("—");
+            }
+            auto *toItem = new QTableWidgetItem(toName);
             toItem->setData(Qt::UserRole, o.value("articleId").toVariant());
             m_sent->setItem(row, 0, toItem);
             m_sent->setItem(row, 1, new QTableWidgetItem(o.value("articleTitle").toString()));

@@ -263,11 +263,11 @@ void QaPage::addAnswerBubble(const QString &answer, const QString &mode,
         cl->setContentsMargins(10, 8, 10, 8);
         cl->setSpacing(4);
 
-        QString head = QString("<a href=\"%1\" style=\"color:#2563EB; text-decoration:none; font-weight:600;\">%2</a>")
+        QString head = QString("<a href=\"%1\" style=\"color:#6B7F74; text-decoration:none; font-weight:600;\">%2</a>")
                            .arg(articleId)
                            .arg(title.toHtmlEscaped());
         if (score > 0) {
-            head += QString("　<span style='color:#9098A3;'>相关度 %1</span>").arg(score, 0, 'f', 2);
+            head += QString("　<span style='color:#757575;'>相关度 %1</span>").arg(score, 0, 'f', 2);
         }
         auto *titleLabel = new QLabel(head, card);
         titleLabel->setTextFormat(Qt::RichText);
@@ -371,7 +371,7 @@ void QaPage::scrollToBottom() {
 
 void QaPage::setStatus(const QString &text, bool error) {
     m_status->setText(text);
-    m_status->setStyleSheet(error ? "color:#DC2626;" : "color:#6B7280;");
+    m_status->setStyleSheet(error ? "color:#B94A48;" : "color:#757575;");
     if (error && !text.isEmpty()) {
         notify::warn(this, text);
     }

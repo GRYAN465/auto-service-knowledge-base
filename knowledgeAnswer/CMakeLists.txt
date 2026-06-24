@@ -169,6 +169,7 @@ target_link_libraries(knowledgeAnswer PRIVATE
 
     Qt${QT_VERSION_MAJOR}::Network
 
+
 )
 
 

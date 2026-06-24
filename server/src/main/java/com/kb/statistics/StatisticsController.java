@@ -40,7 +40,7 @@ public class StatisticsController {
 
     @Operation(summary = "热门知识（按累计浏览量，可选分类含子分类）")
     @GetMapping("/hot-article")
-    @PreAuthorize("hasAuthority('statistics:view')")
+    @PreAuthorize("hasAuthority('knowledge:search')")
     public Result<List<HotArticleVO>> hotArticle(@RequestParam(required = false) Long categoryId,
                                                  @RequestParam(defaultValue = "10") int limit) {
         return Result.ok(statisticsService.hotArticles(categoryId, limit));

@@ -14,12 +14,26 @@ Settings &Settings::instance() {
     return *inst;
 }
 
+QString Settings::normalizeBaseUrl(const QString &url) {
+    QString u = url.trimmed();
+    while (u.endsWith(QLatin1Char('/'))) {
+        u.chop(1);
+    }
+    if (u.isEmpty()) {
+        return QString::fromLatin1(kDefaultBaseUrl);
+    }
+    if (!u.endsWith(QStringLiteral("/api"), Qt::CaseInsensitive)) {
+        u += QStringLiteral("/api");
+    }
+    return u;
+}
+
 QString Settings::baseUrl() const {
-    return m_settings.value(kBaseUrl, kDefaultBaseUrl).toString();
+    return normalizeBaseUrl(m_settings.value(kBaseUrl, kDefaultBaseUrl).toString());
 }
 
 void Settings::setBaseUrl(const QString &url) {
-    m_settings.setValue(kBaseUrl, url);
+    m_settings.setValue(kBaseUrl, normalizeBaseUrl(url));
 }
 
 bool Settings::rememberUsername() const {

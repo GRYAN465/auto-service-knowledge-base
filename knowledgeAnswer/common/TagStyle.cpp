@@ -11,7 +11,7 @@ QLabel *createTagNameChip(const QString &name, const QString &color, QWidget *pa
     chip->setObjectName("TagNameChip");
     QString c = color.trimmed();
     if (c.isEmpty()) {
-        c = QStringLiteral("#6B7280");
+        c = QStringLiteral("#757575");
     }
     QColor base(c);
     const QString bg = base.isValid()
@@ -20,7 +20,7 @@ QLabel *createTagNameChip(const QString &name, const QString &color, QWidget *pa
                                  .arg(base.green())
                                  .arg(base.blue())
                            : QStringLiteral("#EEF2F7");
-    const QString fg = base.isValid() ? base.name(QColor::HexRgb) : QStringLiteral("#374151");
+    const QString fg = base.isValid() ? base.name(QColor::HexRgb) : QStringLiteral("#4A4A4A");
     chip->setStyleSheet(QStringLiteral(
                             "background:%1; color:%2; border-radius:6px; padding:3px 10px; font-size:12px;")
                             .arg(bg, fg));

@@ -17,6 +17,9 @@ public:
     QString baseUrl() const;
     void setBaseUrl(const QString &url);
 
+    /** 去掉末尾斜杠并确保以 /api 结尾（本项目 servlet context-path 固定为 /api）。 */
+    static QString normalizeBaseUrl(const QString &url);
+
     bool rememberUsername() const;
     void setRememberUsername(bool on);
 
