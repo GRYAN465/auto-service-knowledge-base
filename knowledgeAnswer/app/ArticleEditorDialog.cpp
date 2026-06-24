@@ -63,18 +63,32 @@ void flattenCategories(QComboBox *box, const QJsonArray &nodes, int depth) {
 
 } // namespace
 
-ArticleEditorDialog::ArticleEditorDialog(qint64 articleId, QWidget *parent)
-    : QDialog(parent), m_articleId(articleId) {
-    setWindowTitle(articleId > 0 ? QStringLiteral("编辑知识") : QStringLiteral("新建知识"));
+ArticleEditorDialog::ArticleEditorDialog(qint64 articleId, QWidget *parent, bool submitForAudit)
+    : QDialog(parent), m_articleId(articleId), m_submitForAudit(submitForAudit) {
+    if (submitForAudit) {
+        setWindowTitle(articleId > 0 ? QStringLiteral("编辑并提交") : QStringLiteral("上传知识"));
+    } else {
+        setWindowTitle(articleId > 0 ? QStringLiteral("编辑知识") : QStringLiteral("新建知识"));
+    }
     setMinimumSize(820, 640);
     buildUi();
     loadCategories();
     loadTags();
+    if (m_submitForAudit) {
+        m_attachHint->setVisible(false);
+        m_attachTable->setVisible(false);
+        m_attachUpload->setVisible(false);
+        m_attachDownload->setVisible(false);
+        m_attachDelete->setVisible(false);
+        m_saveButton->setText(QStringLiteral("提交审核"));
+    }
     if (m_articleId > 0) {
         // 标题/正文等基础字段先填；分类/标签选中项在各自列表异步到位后由回调回填。
         loadDetailIfEditing();
-        refreshAttachments();
-        setAttachmentPanelEnabled(true);
+        if (!m_submitForAudit) {
+            refreshAttachments();
+            setAttachmentPanelEnabled(true);
+        }
     } else {
         setAttachmentPanelEnabled(false);
     }
@@ -304,6 +318,19 @@ QJsonObject ArticleEditorDialog::collectBody() const {
     return body;
 }
 
+void ArticleEditorDialog::submitForAudit(qint64 articleId) {
+    ApiClient::instance().post("/knowledge/article/" + QString::number(articleId) + "/submit",
+                               QJsonObject{}, [this](const ApiResponse &r) {
+        if (!r.ok) {
+            setStatus(r.message, true);
+            return;
+        }
+        m_dirty = true;
+        notify::info(this, QStringLiteral("已提交审核，审核通过后将展示在社区"));
+        accept();
+    });
+}
+
 void ArticleEditorDialog::save() {
     if (m_title->text().trimmed().isEmpty()) {
         setStatus(QStringLiteral("标题不能为空"), true);
@@ -318,6 +345,10 @@ void ArticleEditorDialog::save() {
                 return;
             }
             m_dirty = true;
+            if (m_submitForAudit) {
+                submitForAudit(m_articleId);
+                return;
+            }
             setStatus(QStringLiteral("已保存（版本 %1）").arg(r.object().value("currentVersion").toInt()));
         });
     } else {
@@ -328,6 +359,10 @@ void ArticleEditorDialog::save() {
             }
             m_articleId = static_cast<qint64>(r.object().value("id").toDouble());
             m_dirty = true;
+            if (m_submitForAudit) {
+                submitForAudit(m_articleId);
+                return;
+            }
             setWindowTitle(QStringLiteral("编辑知识"));
             setAttachmentPanelEnabled(true);
             refreshAttachments();

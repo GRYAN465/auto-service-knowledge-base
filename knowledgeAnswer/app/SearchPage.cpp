@@ -1,6 +1,7 @@
 #include "app/SearchPage.h"
 
 #include "app/ArticleDetailPanel.h"
+#include "app/ArticleEditorDialog.h"
 #include "app/ArticleFeedCard.h"
 #include "app/PinTagsEditDialog.h"
 #include "app/UserProfilePanel.h"
@@ -55,6 +56,13 @@ void SearchPage::buildUi() {
     m_search->setMinimumWidth(280);
     topRow->addWidget(pageTitle);
     topRow->addStretch();
+    m_uploadBtn = new QPushButton(QStringLiteral("上传知识"), m_listPage);
+    m_uploadBtn->setObjectName("PrimaryButton");
+    m_uploadBtn->setVisible(Session::instance().hasPermission(QStringLiteral("knowledge:article:create"))
+                            && Session::instance().hasPermission(QStringLiteral("knowledge:article:submit")));
+    connect(m_uploadBtn, &QPushButton::clicked, this, &SearchPage::uploadArticle);
+    topRow->addWidget(m_uploadBtn);
+    topRow->addSpacing(12);
     topRow->addWidget(m_search, 1);
     root->addLayout(topRow);
 
@@ -267,6 +275,11 @@ void SearchPage::loadMore() {
 void SearchPage::openDetail(qint64 articleId) {
     m_detail->showArticle(articleId);
     m_stack->setCurrentWidget(m_detail);
+}
+
+void SearchPage::uploadArticle() {
+    ArticleEditorDialog dlg(0, this, true);
+    dlg.exec();
 }
 
 void SearchPage::openProfile(qint64 userId) {

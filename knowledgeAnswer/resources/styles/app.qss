@@ -436,6 +436,16 @@ QToolButton#LinkButton {
 QToolButton#LinkButton:hover {
     color: #2563EB;
 }
+QPushButton#LinkButton {
+    background: transparent;
+    border: none;
+    color: #2563EB;
+    padding: 2px 0;
+    text-align: left;
+}
+QPushButton#LinkButton:hover {
+    color: #1D4FD7;
+}
 
 /* ===== 占位页 ===== */
 #PlaceholderCard {

@@ -23,7 +23,9 @@ class ArticleEditorDialog : public QDialog {
     Q_OBJECT
 
 public:
-    explicit ArticleEditorDialog(qint64 articleId, QWidget *parent = nullptr);
+    /** @param submitForAudit true：社区投稿模式，保存后自动提交审核（PENDING_AUDIT） */
+    explicit ArticleEditorDialog(qint64 articleId, QWidget *parent = nullptr,
+                                 bool submitForAudit = false);
 
     /** 编辑过程中是否产生了需要外层刷新的变更（保存/附件增删）。 */
     bool dirty() const { return m_dirty; }
@@ -35,6 +37,7 @@ private:
     void loadDetailIfEditing();
 
     void save();
+    void submitForAudit(qint64 articleId);
     QJsonObject collectBody() const;
 
     // 附件子面板
@@ -49,6 +52,7 @@ private:
 
     qint64 m_articleId = 0;       // 0 = 新建（保存后回填）
     bool m_dirty = false;
+    bool m_submitForAudit = false;
 
     QLineEdit *m_title = nullptr;
     QComboBox *m_category = nullptr;

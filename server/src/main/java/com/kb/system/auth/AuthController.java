@@ -8,7 +8,10 @@ import com.kb.security.SecurityUtils;
 import com.kb.system.auth.dto.ChangePasswordRequest;
 import com.kb.system.auth.dto.LoginRequest;
 import com.kb.system.auth.dto.MeResponse;
+import com.kb.system.auth.dto.RegisterOrgOptionVO;
+import com.kb.system.auth.dto.RegisterRequest;
 import com.kb.system.auth.dto.TokenResponse;
+import com.kb.system.org.OrgService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,6 +23,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 /**
  * 鉴权接口（见《API契约.md》§2）。登录与当前用户均落到 {@link AuthService}（DB + BCrypt + RBAC）。
  */
@@ -29,15 +34,30 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final OrgService orgService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, OrgService orgService) {
         this.authService = authService;
+        this.orgService = orgService;
     }
 
     @Operation(summary = "登录，返回 JWT")
     @PostMapping("/login")
     public Result<TokenResponse> login(@RequestBody @Valid LoginRequest request, HttpServletRequest http) {
         return Result.ok(authService.login(request.getUsername(), request.getPassword(), clientIp(http)));
+    }
+
+    @Operation(summary = "注册可选机构列表（无需登录）")
+    @GetMapping("/register/orgs")
+    public Result<List<RegisterOrgOptionVO>> registerOrgs() {
+        return Result.ok(orgService.listRegisterOptions());
+    }
+
+    @Operation(summary = "用户自助注册（默认普通用户角色）")
+    @PostMapping("/register")
+    public Result<Void> register(@RequestBody @Valid RegisterRequest request) {
+        authService.register(request);
+        return Result.ok();
     }
 
     @Operation(summary = "注销")

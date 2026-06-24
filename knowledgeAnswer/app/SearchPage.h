@@ -37,6 +37,7 @@ private:
     void polishSortButtons();
     void openDetail(qint64 articleId);
     void openProfile(qint64 userId);
+    void uploadArticle();
 
     QString m_title;
     QStackedWidget *m_stack = nullptr;
@@ -45,6 +46,7 @@ private:
     UserProfilePanel *m_profile = nullptr;
 
     QLineEdit *m_search = nullptr;
+    QPushButton *m_uploadBtn = nullptr;
     QPushButton *m_latestBtn = nullptr;
     QPushButton *m_hotBtn = nullptr;
     QHBoxLayout *m_tagBtnRow = nullptr;

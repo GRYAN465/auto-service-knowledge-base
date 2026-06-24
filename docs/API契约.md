@@ -31,7 +31,7 @@
   | 5xxx | 检索/应用/互动 |
   | 6xxx | 开放 API |
 
-- **鉴权**：除 `/auth/login`、开放 API `/open/v1/**`、健康检查/Swagger 外，业务请求头带 `Authorization: Bearer <jwt>`；开放 API 使用 AppKey + HMAC 签名，见 §6.2。
+- **鉴权**：除 `/auth/login`、`/auth/register`、`/auth/register/orgs`、开放 API `/open/v1/**`、健康检查/Swagger 外，业务请求头带 `Authorization: Bearer <jwt>`；开放 API 使用 AppKey + HMAC 签名，见 §6.2。
 - **分页**：请求 `?page=1&pageSize=20`（或 body）；响应 `data`：
 
   ```json
@@ -48,9 +48,37 @@
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | POST | `/auth/login` | 入参 `{username,password}`；从 `sys_user` 查账号并用 BCrypt 校验密码；校验账号启用/有效期；出参 `{token, expiresIn}` |
+| GET | `/auth/register/orgs` | **无需登录**。返回注册可选机构 `{id, label}` 列表（仅 `ENABLED`，label 含树形缩进） |
+| POST | `/auth/register` | **无需登录**。自助注册，入参见下；创建 `sys_user`（`status=ENABLED`）并仅授予角色 **USER（普通用户）**；用户名唯一 |
 | POST | `/auth/logout` | 无状态退出；客户端丢弃当前 token，服务端不维护 token 黑名单 |
 | GET | `/auth/me` | 从 DB 装配当前用户 + 角色 + **菜单树 + 权限码列表**（驱动客户端导航与按钮） |
 | PUT | `/auth/me/password` | 修改当前用户密码。入参 `{oldPassword,newPassword}`（新密码至少 6 位）；原密码错误返回 `code=1001`；**已登录即可**，无需额外权限码 |
+
+**`POST /auth/register` 入参**：
+
+```json
+{
+  "orgId": 1001,
+  "username": "newuser",
+  "password": "123456",
+  "realName": "张三",
+  "nickname": "小张",
+  "email": "zhang@example.com",
+  "phone": "13800000000",
+  "gender": "M"
+}
+```
+
+| 字段 | 必填 | 说明 |
+|---|---|---|
+| `orgId` | 是 | 所属机构，须为启用机构 |
+| `username` | 是 | 3~64 位，唯一 |
+| `password` | 是 | 至少 6 位 |
+| `realName` | 是 | 姓名 |
+| `nickname` / `email` / `phone` | 否 | 对应 `sys_user` 字段 |
+| `gender` | 否 | `M`/`F`/`U`，默认 `U` |
+
+成功 `code=0`；用户名重复返回 `code=1001 用户名已存在`。
 
 `/auth/me` 响应 `data` 形态：
 
@@ -189,6 +217,16 @@
 | `authorId` | 可选；他人主页「已上线知识」用此筛选 |
 | `sortBy` | 可选；`UPDATE_TIME`（默认，最新）或 `VIEW_COUNT`（最热）。有 `keyword` 时全文相关度优先 |
 | `offset` / `pageSize` | offset 模式见上；无 offset 时用 `page`（默认 1）+ `pageSize`（默认 20） |
+
+**社区投稿（知识社区页「上传知识」，V13+）**：
+
+| 步骤 | 方法 | 路径 | 权限码 | 说明 |
+|---|---|---|---|---|
+| 1 | POST | `/knowledge/article` | `knowledge:article:create` | 新建草稿（`status=DRAFT`，`authorId`=当前用户） |
+| 2 | POST | `/knowledge/article/{id}/submit` | `knowledge:article:submit` | 提交审核（`DRAFT` → `PENDING_AUDIT`） |
+
+投稿表单还需只读：`GET /knowledge/category/tree`（`knowledge:category:list`）、`GET /knowledge/tag`（`knowledge:tag:list`）。  
+坐席（AGENT）、普通用户（USER）在 V13 迁移中已授予上述权限；审核通过后状态为 `ONLINE`，方可在本接口检索结果中展示。
 
 **`SearchArticleVO` 字段**：
 
