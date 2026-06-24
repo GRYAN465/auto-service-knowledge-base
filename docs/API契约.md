@@ -3,7 +3,7 @@
 > 配套《总体开发计划.md》§5、《数据库表清单.md》。本文件定通用约定 + 一期接口草案，作为前后端联调依据。逐模块开发时在此细化字段。
 > 二期接口（问答 / 实时辅助）只列规划，标 TODO。
 >
-> 最近更新：2026-06-23（知识社区 + 个人中心，V12）
+> 最近更新：2026-06-24（首页个性化推荐）
 
 ---
 
@@ -197,8 +197,80 @@
 | GET | `/interaction/share/unread-count` | `interaction:share` | 未读分享数（模块 6）✅ 已实现 |
 | GET | `/interaction/users` | `interaction:share` | 可选收件人（启用用户 id+姓名），供坐席选人，避开 `system:user:list`（模块 6）✅ 已实现 |
 | GET | `/interaction/state?articleId=` | `knowledge:search` | 某知识对当前用户的互动初态（收藏/我的点赞态/四项计数）（模块 6）✅ 已实现，见 §5.3 |
+| GET | `/knowledge/recommend/home?limit=&pinnedTagIds=` | `knowledge:search` | **首页个性化推荐** TOP5（行为画像 + 向量相似度 + 热度加权）✅ 已实现，见 §5.4 |
 
 > 朗读（TTS）在客户端本地用 Qt TextToSpeech，无需后端接口。
+
+### 5.4 首页个性化推荐（已实现）
+
+基于用户**即时搜索（24h）**、**近期搜索（7d）**、**最近点赞**、**常用标签 pin** 分层构建画像，经 **ai-service `POST /ai/recommend/match`**（`profile_segments` 加权向量融合）与库内标签/文章匹配；即时搜索词另走全文召回通道。最终 **兴趣分 > 热度分**（动态约 72%~85% : 28%~15%）。
+
+| 方法 | 路径 | 权限码 | 说明 |
+|---|---|---|---|
+| GET | `/knowledge/recommend/home?limit=5&pinnedTagIds=1,3,8` | `knowledge:search` | 首页「推荐知识」区块数据源 |
+
+**查询参数**：
+
+| 参数 | 默认 | 说明 |
+|---|---|---|
+| `limit` | `5` | 推荐条数，收敛 [1,20] |
+| `pinnedTagIds` | 空 | 逗号分隔标签 ID；客户端从本地常用标签 pin 传入 |
+
+**响应 `data`（`RecommendHomeVO`）**：
+
+```json
+{
+  "items": [
+    {
+      "id": 1001,
+      "title": "退款流程指引",
+      "categoryName": "话术库",
+      "knowledgeType": "SCRIPT",
+      "viewCount": 120,
+      "likeCount": 8,
+      "commentCount": 3,
+      "tags": [{ "id": 1, "name": "退款", "color": "#9AA69D" }],
+      "matchScore": 0.76,
+      "hotScore": 0.82,
+      "reasonTags": ["退款", "投诉处理"]
+    }
+  ],
+  "profileSummary": {
+    "topTags": [{ "id": 1, "name": "退款", "score": 0.89 }],
+    "keywords": ["退款流程", "信用卡"],
+    "source": "vector"
+  },
+  "fallback": false
+}
+```
+
+| 字段 | 说明 |
+|---|---|
+| `matchScore` | 兴趣匹配分（向量相似度归一化，0~1） |
+| `hotScore` | 热度分（浏览/点赞/评论 log 加权后归一化，0~1） |
+| `profileSummary.source` | `vector` 正常推荐；`fallback` 行为不足或 AI 不可用时降级为加权热门 |
+| `fallback` | `true` 表示本次结果为降级热门 |
+
+**热度公式（服务端 `kb.recommend.*` 可配）**：
+
+```text
+rawHot = 0.45·ln(1+view) + 0.35·ln(1+like) + 0.20·ln(1+comment)
+
+profile_segments 权值（画像融合，缺段时自动归一化）：
+  immediate 0.45 | recent-search 0.25 | recent-like 0.15 | pinned-tag 0.15
+
+interest = 0.35·articleSim + 0.30·tagSim + 0.25·keywordHit + 0.10·likeTagBoost
+
+wInterest = min(0.85, 0.72 + 0.13·recentStrength)   // 有即时搜索时更高
+wHot = 1 - wInterest
+finalScore = wInterest·interestNorm + wHot·hotNorm
+```
+
+**编排说明**：
+
+- Java 读行为 → 分层 `profile_segments` → 调 Python `/ai/recommend/match` → **即时/近期搜索词全文召回** + Top 标签候选池 → 兴趣/热度排序 → 排除最近已点赞文章。
+- ai-service 不可用或无行为数据时自动 **fallback** 为全站加权热门，不返回 5000。
+- 内部契约：`POST /ai/recommend/match`（Java `AiClient.recommendMatch`，不对 Qt 暴露）。
 
 ### 5.1 知识检索 / 知识社区信息流（模块 5 + 社区页，已实现）
 

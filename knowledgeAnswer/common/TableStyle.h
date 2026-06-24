@@ -21,8 +21,17 @@ void configureTagTable(QTableWidget *table);
 /** 标题列拉伸，其余列按内容（适用于收藏/管理等列表）。 */
 void configureTitleTable(QTableWidget *table, int titleColumn = 0);
 
-/** 带序号列的榜单：# 固定宽，标题拉伸，其余 Interactive。 */
+/** 带序号列的榜单：# 固定宽，标题拉伸，其余按内容。 */
 void configureRankedTable(QTableWidget *table, int titleColumn = 1);
+
+/**
+ * 多列宽表：列按内容展开，超出视口时表格内横向滚动（不撑大窗体）。
+ * @param fixedColumn 固定宽列（如 # 列传 0；无则传 -1）
+ */
+void configureWideScrollTable(QTableWidget *table, int fixedColumn = -1);
+
+/** 配合 configureWideScrollTable，在填充数据后调用。 */
+void expandWideScrollColumns(QTableWidget *table, int fixedColumn = -1);
 
 void setItemTooltipFromText(QTableWidget *table);
 

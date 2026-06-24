@@ -380,7 +380,11 @@ void SystemAdminPage::fillPageTable(const QJsonObject &pageData, const QStringLi
             m_table->setItem(row, col, item);
         }
     }
-    TableStyle::configureTitleTable(m_table, 1);
+    int stretchColumn = 1;
+    if (m_routeName == QStringLiteral("system.user")) {
+        stretchColumn = 2; // 姓名
+    }
+    TableStyle::configureTitleTable(m_table, stretchColumn);
     TableStyle::setItemTooltipFromText(m_table);
     setStatus(QStringLiteral("已加载 %1 条").arg(list.size()));
 }
@@ -417,7 +421,7 @@ void SystemAdminPage::fillLogTable(QTableWidget *table, const QJsonObject &pageD
             table->setItem(row, col, new QTableWidgetItem(values.at(col)));
         }
     }
-    TableStyle::configureTitleTable(table, 1);
+    TableStyle::configureTitleTable(table, headers.size() - 1);
     TableStyle::setItemTooltipFromText(table);
 }
 

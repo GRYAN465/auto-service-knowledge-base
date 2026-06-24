@@ -45,8 +45,34 @@ kb:
     local-dir: ./uploads          # 本地文件存储目录（FileStorage 抽象）
   ai:
     base-url: http://localhost:8000  # 二期 FastAPI 地址
-    connect-timeout-ms: 3000         # 连接超时
-    read-timeout-ms: 60000           # 读超时（放宽以容 LLM 总结延迟）
+    connect-timeout-ms: 5000         # 连接超时
+    read-timeout-ms: 180000          # 读超时（首次加载 embedding 模型可能较慢）
+    auto-rebuild-on-startup: true
+    auto-rebuild-wait-ms: 120000     # 等待 Python 就绪的最长时间（毫秒）
+  recommend:
+    search-limit: 10
+    like-limit: 5
+    immediate-search-hours: 24
+    immediate-search-limit: 3
+    recent-search-days: 7
+    top-tags: 5
+    candidate-per-tag: 50
+    result-limit: 5
+    search-recall-limit: 20
+    profile-weight-immediate: 0.45
+    profile-weight-recent-search: 0.25
+    profile-weight-recent-like: 0.15
+    profile-weight-pinned-tag: 0.15
+    weight-interest-base: 0.72
+    weight-interest-boost: 0.13
+    interest-article-sim: 0.35
+    interest-tag-sim: 0.30
+    interest-keyword-hit: 0.25
+    interest-like-tag: 0.10
+    hot-view-weight: 0.45
+    hot-like-weight: 0.35
+    hot-comment-weight: 0.20
+    max-embed-articles: 120
 
 logging:
   level:

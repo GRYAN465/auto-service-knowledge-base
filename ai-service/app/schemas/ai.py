@@ -1,5 +1,5 @@
 """Java 编排层 ↔ FastAPI 的接口契约（pydantic 模型即契约定义）。二期落地。"""
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # ——— /ai/parse：附件解析切分 ———
@@ -105,3 +105,49 @@ class LlmTestResponse(BaseModel):
     ok: bool = Field(..., description="是否连通并成功生成")
     message: str = Field("", description="成功为模型返回文本片段，失败为错误原因")
     latency_ms: int = Field(0, description="一次极短生成的往返耗时(毫秒)")
+
+
+# ——— /ai/recommend/match：首页推送画像相似度 ———
+class RecommendTagItem(BaseModel):
+    id: int
+    name: str
+
+
+class RecommendArticleItem(BaseModel):
+    id: int
+    text: str = Field(..., description="标题+摘要+标签名，用于向量化")
+
+
+class ProfileSegment(BaseModel):
+    text: str = Field(..., description="画像分段文本")
+    weight: float = Field(..., ge=0, description="融合权值")
+
+
+class RecommendMatchRequest(BaseModel):
+    profile_text: str = Field("", description="兼容旧版单段画像；优先 profile_segments")
+    profile_segments: list[ProfileSegment] = Field(default_factory=list, description="分层画像+权值")
+    tag_items: list[RecommendTagItem] = []
+    article_items: list[RecommendArticleItem] = []
+    top_tags: int = Field(5, description="返回兴趣标签数")
+    top_articles: int = Field(30, description="返回相似文章数（供编排层参考）")
+
+    @field_validator("profile_text", mode="before")
+    @classmethod
+    def _coerce_profile_text(cls, v: object) -> str:
+        return "" if v is None else str(v)
+
+
+class RecommendScoreItem(BaseModel):
+    id: int
+    score: float
+
+
+class RecommendTagScoreItem(BaseModel):
+    id: int
+    name: str
+    score: float
+
+
+class RecommendMatchResponse(BaseModel):
+    top_tags: list[RecommendTagScoreItem] = []
+    top_articles: list[RecommendScoreItem] = []

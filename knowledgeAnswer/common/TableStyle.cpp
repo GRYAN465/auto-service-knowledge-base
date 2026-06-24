@@ -1,6 +1,7 @@
 #include "common/TableStyle.h"
 
 #include <QAbstractItemView>
+#include <QAbstractScrollArea>
 #include <QHeaderView>
 #include <QTableWidget>
 #include <QTableWidgetItem>
@@ -16,6 +17,7 @@ namespace {
 constexpr int kDefaultRowHeight = 44;
 constexpr int kRankColumnWidth = 52;
 constexpr int kTagColorColumnWidth = 200;
+constexpr int kColumnPadding = 16;
 
 void applyHeaderDefaults(QHeaderView *header) {
     header->setHighlightSections(false);
@@ -38,9 +40,11 @@ void applyDataTable(QTableWidget *table) {
     table->setSelectionMode(QAbstractItemView::SingleSelection);
     table->setEditTriggers(QAbstractItemView::NoEditTriggers);
     table->setWordWrap(false);
-    table->setTextElideMode(Qt::ElideRight);
+    table->setTextElideMode(Qt::ElideNone);
     table->setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
     table->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+    table->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    table->setSizeAdjustPolicy(QAbstractScrollArea::AdjustIgnored);
 
     table->verticalHeader()->setVisible(false);
     table->verticalHeader()->setDefaultSectionSize(kDefaultRowHeight);
@@ -64,6 +68,8 @@ void applyDataTree(QTreeWidget *tree) {
     tree->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
     tree->setUniformRowHeights(false);
     tree->setRootIsDecorated(true);
+    tree->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    tree->setSizeAdjustPolicy(QAbstractScrollArea::AdjustIgnored);
 
     tree->header()->setStretchLastSection(false);
     applyHeaderDefaults(tree->header());
@@ -113,6 +119,34 @@ void configureRankedTable(QTableWidget *table, int titleColumn) {
             continue;
         }
         header->setSectionResizeMode(col, QHeaderView::ResizeToContents);
+    }
+}
+
+void configureWideScrollTable(QTableWidget *table, int fixedColumn) {
+    applyDataTable(table);
+    auto *header = table->horizontalHeader();
+    header->setStretchLastSection(false);
+    for (int col = 0; col < table->columnCount(); ++col) {
+        if (col == fixedColumn) {
+            header->setSectionResizeMode(col, QHeaderView::Fixed);
+            header->resizeSection(col, fixedColumn == 0 ? kRankColumnWidth : 72);
+        } else {
+            header->setSectionResizeMode(col, QHeaderView::Interactive);
+        }
+    }
+}
+
+void expandWideScrollColumns(QTableWidget *table, int fixedColumn) {
+    if (!table) {
+        return;
+    }
+    auto *header = table->horizontalHeader();
+    for (int col = 0; col < table->columnCount(); ++col) {
+        if (col == fixedColumn) {
+            continue;
+        }
+        table->resizeColumnToContents(col);
+        header->resizeSection(col, header->sectionSize(col) + kColumnPadding);
     }
 }
 

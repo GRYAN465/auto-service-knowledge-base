@@ -18,6 +18,8 @@
 --   mysql -u kb -p123456 --default-character-set=utf8mb4 kb < server/src/main/resources/db/demo/demo_data.sql
 -- 社区补充（30 条知识 + 普通用户 + 互动，需在本脚本之后执行）：
 --   mysql -u kb -p123456 --default-character-set=utf8mb4 kb < server/src/main/resources/db/demo/demo_data_community.sql
+-- batch2 补充（5 普通用户 + 50 条知识 + 随机互动，需在前两个脚本之后执行）：
+--   mysql -u kb -p123456 --default-character-set=utf8mb4 kb < server/src/main/resources/db/demo/demo_data_batch2.sql
 -- 或在 mysql 客户端内： SOURCE .../demo/demo_data.sql;
 -- =============================================================================
 

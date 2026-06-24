@@ -15,6 +15,7 @@
 --
 -- 运行：
 --   mysql -u kb -p123456 --default-character-set=utf8mb4 kb < server/src/main/resources/db/demo/demo_data_community.sql
+-- 可选后续：demo_data_batch2.sql（+5 用户 +50 知识）
 -- =============================================================================
 
 SET NAMES utf8mb4;

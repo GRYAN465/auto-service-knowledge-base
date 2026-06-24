@@ -37,8 +37,10 @@ from app.schemas.ai import (
     ParseResponse,
     QaRequest,
     QaResponse,
+    RecommendMatchRequest,
+    RecommendMatchResponse,
 )
-from app.services import chunker, embedding, llm, parser, qa
+from app.services import chunker, embedding, llm, parser, qa, recommend
 from app.services.vector_store import get_vector_store
 
 router = APIRouter(prefix="/ai", tags=["ai"])
@@ -112,6 +114,25 @@ def qa_endpoint(req: QaRequest) -> QaResponse:
         citations=[Citation(**c) for c in result["citations"]],
         mode=result["mode"],
     )
+
+
+@router.post("/recommend/match", response_model=RecommendMatchResponse)
+def recommend_match(req: RecommendMatchRequest) -> RecommendMatchResponse:
+    """用户画像 vs 标签/文章向量相似度（bge，无 LLM）。"""
+    segments = [{"text": s.text, "weight": s.weight} for s in req.profile_segments]
+    if not segments and not (req.profile_text and req.profile_text.strip()):
+        return RecommendMatchResponse()
+    tag_items = [{"id": t.id, "name": t.name} for t in req.tag_items]
+    article_items = [{"id": a.id, "text": a.text} for a in req.article_items]
+    result = recommend.match_profile(
+        req.profile_text or "",
+        tag_items,
+        article_items,
+        top_tags=req.top_tags,
+        top_articles=req.top_articles,
+        profile_segments=segments or None,
+    )
+    return RecommendMatchResponse(**result)
 
 
 # ——— LLM 运行时配置（M9.4）———

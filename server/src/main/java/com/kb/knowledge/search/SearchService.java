@@ -73,7 +73,7 @@ public class SearchService {
                                                       Long tagId, Long authorId, String sortBy, String clientIp) {
         List<Long> articleIdsByTag = resolveTagArticleIds(tagId);
         if (articleIdsByTag != null && articleIdsByTag.isEmpty()) {
-            writeSearchLog(keyword, 0, clientIp);
+            writeSearchLog(resolveLogKeyword(keyword, tagId), 0, clientIp);
             long page = pageSize > 0 ? offset / pageSize + 1 : 1;
             return new PageResult<>(0, page, pageSize, Collections.emptyList());
         }
@@ -85,9 +85,20 @@ public class SearchService {
         List<KbArticle> rows = articleMapper.selectList(wrapper
                 .last("LIMIT " + Math.max(0, offset) + ", " + pageSize));
         List<SearchArticleVO> list = toSearchItems(rows);
-        writeSearchLog(keyword, total == null ? 0 : total.intValue(), clientIp);
+        writeSearchLog(resolveLogKeyword(keyword, tagId), total == null ? 0 : total.intValue(), clientIp);
         long page = pageSize > 0 ? offset / pageSize + 1 : 1;
         return new PageResult<>(total == null ? 0 : total, page, pageSize, list);
+    }
+
+    /** 推荐召回：关键词匹配 ONLINE 文章，不写搜索日志。 */
+    public List<Long> recallArticleIdsByKeyword(String keyword, int limit) {
+        if (!StringUtils.hasText(keyword) || limit <= 0) {
+            return Collections.emptyList();
+        }
+        var wrapper = buildWrapper(keyword.trim(), null, null, null, null);
+        return articleMapper.selectList(wrapper.last("LIMIT " + limit)).stream()
+                .map(KbArticle::getId)
+                .toList();
     }
 
     /** 供 ArticleService / InteractionService 复用：实体列表 → 信息流 VO。 */
@@ -169,6 +180,20 @@ public class SearchService {
                     KbTag t = tagById.get(r.getTagId());
                     return t == null ? null : new TagBriefVO(t.getId(), t.getName(), t.getColor());
                 }, Collectors.filtering(Objects::nonNull, Collectors.toList()))));
+    }
+
+    private String resolveLogKeyword(String keyword, Long tagId) {
+        if (StringUtils.hasText(keyword)) {
+            return keyword.trim();
+        }
+        if (tagId == null) {
+            return null;
+        }
+        KbTag tag = tagMapper.selectById(tagId);
+        if (tag != null && StringUtils.hasText(tag.getName())) {
+            return tag.getName().trim();
+        }
+        return null;
     }
 
     private void writeSearchLog(String keyword, int resultCount, String clientIp) {

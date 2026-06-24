@@ -31,6 +31,13 @@ async def lifespan(_app: FastAPI):
         logger.info("启动自清：已清空 %d 条向量（Java 启动后将全量重建）", removed)
     else:
         logger.info("rebuild_on_startup=false，保留既有向量数据")
+    try:
+        from app.services.embedding import embed_query
+
+        embed_query("预热")
+        logger.info("embedding 模型预加载完成（避免 Java 首次调用超时）")
+    except Exception as e:
+        logger.warning("embedding 预加载失败（首次 AI 请求可能较慢）：%s", e)
     yield
     logger.info("%s 关闭", settings.app_name)
 

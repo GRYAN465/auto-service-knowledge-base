@@ -12,6 +12,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * 启动自动重建向量索引：Python 启动时会清空 chroma，本组件在应用就绪后等待 Python 就绪，
@@ -20,6 +21,7 @@ import java.util.Map;
  * <p>设计要点：
  * <ul>
  *   <li>先等 Python 健康检查通过（最多 {@code maxWaitMs}），避免 Python 还没起好就发起重建。</li>
+ *   <li>若首次等待失败，90 秒后再自动重试一次（常见：Java 先于 Python 启动）。</li>
  *   <li>重建本身是 best-effort：失败的文章记 FAILED 但不阻断启动，单篇异常已在
  *       {@link VectorIndexService#reindexArticle} 内吞掉。</li>
  *   <li>可通过 {@code kb.ai.auto-rebuild-on-startup=false} 关闭本行为（prod 集群多实例场景）。</li>
@@ -37,7 +39,7 @@ public class AutoRebuildRunner {
     public AutoRebuildRunner(VectorIndexService vectorIndexService,
                              @Value("${kb.ai.base-url:http://localhost:8000}") String pythonBaseUrl,
                              @Value("${kb.ai.auto-rebuild-on-startup:true}") boolean enabled,
-                             @Value("${kb.ai.auto-rebuild-wait-ms:30000}") int maxWaitMs) {
+                             @Value("${kb.ai.auto-rebuild-wait-ms:120000}") int maxWaitMs) {
         this.vectorIndexService = vectorIndexService;
         this.pythonBaseUrl = pythonBaseUrl;
         this.enabled = enabled;
@@ -46,26 +48,44 @@ public class AutoRebuildRunner {
 
     @EventListener(ApplicationReadyEvent.class)
     public void onReady() {
+        attemptRebuild("启动", true);
+    }
+
+    private void attemptRebuild(String phase, boolean scheduleRetry) {
         if (!enabled) {
             log.info("auto-rebuild-on-startup=false，跳过启动重建");
             return;
         }
         if (!waitForPython()) {
-            log.warn("Python ai-service 在 {}ms 内未就绪，跳过启动重建（可稍后手动 POST /api/ai/index/rebuild）", maxWaitMs);
+            log.warn("{}：Python ai-service 在 {}ms 内未就绪。"
+                            + " 请先启动 ai-service:8000，或稍后 POST /api/ai/index/rebuild 手动重建向量。",
+                    phase, maxWaitMs);
+            if (scheduleRetry) {
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        Thread.sleep(90_000);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                    attemptRebuild("延迟重试", false);
+                });
+            }
             return;
         }
+        logHealthSnapshot();
         try {
             Map<String, Integer> result = vectorIndexService.reindexAllOnline();
-            log.info("启动自动重建索引完成：{}", result);
+            log.info("{}自动重建索引完成：{}", phase, result);
         } catch (Exception e) {
-            log.warn("启动自动重建索引异常（已忽略）：{}", e.toString());
+            log.warn("{}自动重建索引异常（已忽略）：{}", phase, e.toString());
         }
     }
 
     /** 轮询 Python /health，直到 UP 或超时。*/
     private boolean waitForPython() {
         HttpClient client = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(3))
+                .connectTimeout(Duration.ofSeconds(5))
                 .build();
         long deadline = System.currentTimeMillis() + maxWaitMs;
         int attempt = 0;
@@ -74,7 +94,7 @@ public class AutoRebuildRunner {
             try {
                 HttpRequest req = HttpRequest.newBuilder()
                         .uri(URI.create(pythonBaseUrl + "/health"))
-                        .timeout(Duration.ofSeconds(2))
+                        .timeout(Duration.ofSeconds(5))
                         .GET()
                         .build();
                 HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
@@ -93,5 +113,20 @@ public class AutoRebuildRunner {
             }
         }
         return false;
+    }
+
+    private void logHealthSnapshot() {
+        try {
+            HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(pythonBaseUrl + "/health"))
+                    .timeout(Duration.ofSeconds(5))
+                    .GET()
+                    .build();
+            HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+            log.info("Python /health 快照：{}", resp.body());
+        } catch (Exception e) {
+            log.debug("读取 Python /health 快照失败：{}", e.toString());
+        }
     }
 }

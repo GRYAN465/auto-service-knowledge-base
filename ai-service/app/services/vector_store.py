@@ -34,6 +34,10 @@ class VectorStore(ABC):
     def remove_article(self, article_id: int) -> int:
         """删除某篇知识的全部块，返回删除条数。"""
 
+    @abstractmethod
+    def count(self) -> int:
+        """当前 collection 内向量块总数。"""
+
 
 class ChromaVectorStore(VectorStore):
     def __init__(self, persist_dir: str, collection_name: str):
@@ -105,6 +109,9 @@ class ChromaVectorStore(VectorStore):
         if removed:
             logger.info("remove article=%d 删除块数=%d", article_id, removed)
         return removed
+
+    def count(self) -> int:
+        return int(self._col.count())
 
     def clear_all(self) -> int:
         """清空 collection 内全部向量块（启动时重置，配合 Java 全量重建）。返回清掉的块数。"""
