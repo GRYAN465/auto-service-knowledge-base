@@ -120,9 +120,12 @@ CREATE TABLE rt_active_session (
 | POST | `/realtime/session/start` | `realtime:assist` | 开始会话，传入 callerNumber，创建 qa_session + rt_active_session，返回 sessionId |
 | POST | `/realtime/session/end` | `realtime:assist` | 结束会话，更新 qa_session.status=ENDED，清除 rt_active_session |
 | GET | `/realtime/session/active` | `realtime:assist` | 查询当前坐席的活跃会话（断线重连用） |
-| POST | `/realtime/asr/push` | 无（内部调用） | 推送转写片段，传入 sessionId + speaker + content，写入 qa_message |
-| GET | `/realtime/config` | `realtime:assist` | 获取实时辅助配置 |
-| PUT | `/realtime/config` | `ai:config` | 更新配置（管理员权限） |
+| POST | `/realtime/asr/push` | `realtime:assist` | 推送转写片段，传入 sessionId + speaker + content，写入 qa_message |
+
+**MVP 配置常量**（硬编码，不做运行时配置接口）：
+- 推荐触发间隔：5 秒
+- 每次推荐条数：3
+- 后续迭代如需运行时可调，再新增 `rt_config` 表 + `GET/PUT /realtime/config` 接口
 
 ### 4.2 WebSocket 协议
 
