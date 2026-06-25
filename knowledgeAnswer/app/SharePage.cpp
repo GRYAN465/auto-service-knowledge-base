@@ -35,6 +35,10 @@ SharePage::SharePage(const QString &title, QWidget *parent)
     refresh();
 }
 
+void SharePage::refreshPage() {
+    refresh();
+}
+
 void SharePage::buildUi() {
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(24, 20, 24, 24);

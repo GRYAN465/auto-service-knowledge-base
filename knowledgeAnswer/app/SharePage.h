@@ -1,5 +1,7 @@
 #pragma once
 
+#include "app/RefreshablePage.h"
+
 #include <QWidget>
 
 class QLabel;
@@ -13,11 +15,13 @@ namespace kb {
  *   - 「我发出的」Tab：GET /interaction/share/sent
  *   - 页顶状态行显示未读数（GET /interaction/share/unread-count）
  */
-class SharePage : public QWidget {
+class SharePage : public QWidget, public RefreshablePage {
     Q_OBJECT
 
 public:
     explicit SharePage(const QString &title, QWidget *parent = nullptr);
+
+    void refreshPage() override;
 
 private:
     void buildUi();

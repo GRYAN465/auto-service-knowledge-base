@@ -1,5 +1,7 @@
 #pragma once
 
+#include "app/RefreshablePage.h"
+
 #include <QString>
 #include <QWidget>
 
@@ -22,11 +24,13 @@ namespace kb {
  *   - 引用卡点击打开只读详情弹窗（复用 ArticleDetailDialog）；反馈 POST /ai/qa/feedback
  * 异步回调以 QPointer 守卫（LLM 延迟可达数十秒，期间可能切走本页）。
  */
-class QaPage : public QWidget {
+class QaPage : public QWidget, public RefreshablePage {
     Q_OBJECT
 
 public:
     explicit QaPage(const QString &title, QWidget *parent = nullptr);
+
+    void refreshPage() override;
 
 private:
     void buildUi();

@@ -317,6 +317,12 @@ void ArticleDetailPanel::showArticle(qint64 articleId) {
     load();
 }
 
+void ArticleDetailPanel::reload() {
+    if (m_articleId > 0) {
+        load();
+    }
+}
+
 void ArticleDetailPanel::load() {
     m_titleLabel->setText(QStringLiteral("加载中..."));
     QPointer<ArticleDetailPanel> guard(this);

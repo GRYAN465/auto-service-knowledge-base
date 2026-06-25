@@ -20,6 +20,8 @@ public:
     explicit ArticleDetailPanel(QWidget *parent = nullptr);
 
     void showArticle(qint64 articleId);
+    /** 重新拉取当前文章（顶栏刷新 / 切回页面时用）。 */
+    void reload();
     void setBackButtonVisible(bool visible);
 
 signals:

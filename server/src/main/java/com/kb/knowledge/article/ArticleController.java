@@ -66,6 +66,13 @@ public class ArticleController {
                 searchService.toSearchItems(raw.getList())));
     }
 
+    @Operation(summary = "作者查看自己的知识详情（含草稿，仅本人）")
+    @GetMapping("/mine/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public Result<ArticleDetailVO> mineDetail(@PathVariable Long id) {
+        return Result.ok(articleService.mineDetail(id));
+    }
+
     @Operation(summary = "知识详情（正文 + 标签 + 附件）")
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('knowledge:article:list')")

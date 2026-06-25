@@ -35,6 +35,21 @@ SearchPage::SearchPage(const QString &title, QWidget *parent)
     resetFeed();
 }
 
+void SearchPage::refreshPage() {
+    if (!m_stack) {
+        return;
+    }
+    QWidget *cur = m_stack->currentWidget();
+    if (cur == m_listPage) {
+        loadTagOptions();
+        resetFeed();
+    } else if (cur == m_detail) {
+        m_detail->reload();
+    } else if (cur == m_profile) {
+        m_profile->reload();
+    }
+}
+
 void SearchPage::buildUi() {
     auto *outer = new QVBoxLayout(this);
     outer->setContentsMargins(0, 0, 0, 0);
@@ -278,7 +293,7 @@ void SearchPage::openDetail(qint64 articleId) {
 }
 
 void SearchPage::uploadArticle() {
-    ArticleEditorDialog dlg(0, this, true);
+    ArticleEditorDialog dlg(0, this);
     dlg.exec();
 }
 
@@ -291,6 +306,13 @@ void SearchPage::openProfile(qint64 userId) {
         m_profile = nullptr;
     });
     connect(m_profile, &UserProfilePanel::openArticle, this, &SearchPage::openDetail);
+    connect(m_profile, &UserProfilePanel::openDraft, this, [this](qint64 id) {
+        ArticleEditorDialog dlg(id, m_stack);
+        dlg.exec();
+        if (dlg.dirty()) {
+            m_profile->reload();
+        }
+    });
     m_stack->setCurrentWidget(m_profile);
 }
 

@@ -123,9 +123,12 @@ void UserProfilePanel::buildUi() {
     tabBar->setSpacing(8);
     m_pubTab = makeSubTab(QStringLiteral("发布的知识"), tabBarHost);
     m_favTab = makeSubTab(QStringLiteral("收藏的知识"), tabBarHost);
+    m_draftTab = makeSubTab(QStringLiteral("我的草稿"), tabBarHost);
+    m_draftTab->setVisible(false);
     m_pubTab->setChecked(true);
     tabBar->addWidget(m_pubTab);
     tabBar->addWidget(m_favTab);
+    tabBar->addWidget(m_draftTab);
     tabBar->addStretch();
     bodyLayout->addWidget(tabBarHost);
 
@@ -154,11 +157,24 @@ void UserProfilePanel::buildUi() {
 
     m_tabStack->addWidget(pubPage);
     m_tabStack->addWidget(favPage);
+
+    auto *draftPage = new QWidget(m_tabStack);
+    auto *draftLayoutOuter = new QVBoxLayout(draftPage);
+    draftLayoutOuter->setContentsMargins(16, 12, 16, 16);
+    m_draftEmpty = new QLabel(QStringLiteral("暂无草稿"), draftPage);
+    m_draftEmpty->setObjectName("MutedLabel");
+    m_draftEmpty->setAlignment(Qt::AlignCenter);
+    m_draftScroll = makeFeedScroll(&m_draftFeed, draftPage);
+    draftLayoutOuter->addWidget(m_draftEmpty);
+    draftLayoutOuter->addWidget(m_draftScroll, 1);
+    m_tabStack->addWidget(draftPage);
+
     bodyLayout->addWidget(m_tabStack, 1);
     root->addWidget(bodyCard, 1);
 
     connect(m_pubTab, &QPushButton::clicked, this, [this]() { switchTab(0); });
     connect(m_favTab, &QPushButton::clicked, this, [this]() { switchTab(1); });
+    connect(m_draftTab, &QPushButton::clicked, this, [this]() { switchTab(2); });
 }
 
 void UserProfilePanel::reload() {
@@ -199,6 +215,7 @@ void UserProfilePanel::loadProfile() {
 
         m_changePwdBtn->setVisible(m_self);
         m_privacyBox->setVisible(m_self);
+        m_draftTab->setVisible(m_self);
         m_favTab->setVisible(true);
         if (m_self) {
             m_privacyBox->blockSignals(true);
@@ -208,6 +225,9 @@ void UserProfilePanel::loadProfile() {
 
         loadPublished();
         loadFavorites();
+        if (m_self) {
+            loadDrafts();
+        }
     });
 }
 
@@ -221,11 +241,16 @@ void UserProfilePanel::clearFeed(QVBoxLayout *layout) {
     }
 }
 
-void UserProfilePanel::appendFeedCards(const QJsonArray &list, QVBoxLayout *layout, bool &hasMore) {
+void UserProfilePanel::appendFeedCards(const QJsonArray &list, QVBoxLayout *layout, bool &hasMore,
+                                       bool draftMode) {
     hasMore = !list.isEmpty();
     for (const QJsonValue &v : list) {
         auto *card = new ArticleFeedCard(v.toObject(), this);
-        connect(card, &ArticleFeedCard::clicked, this, &UserProfilePanel::openArticle);
+        if (draftMode) {
+            connect(card, &ArticleFeedCard::clicked, this, &UserProfilePanel::openDraft);
+        } else {
+            connect(card, &ArticleFeedCard::clicked, this, &UserProfilePanel::openArticle);
+        }
         layout->insertWidget(layout->count() - 1, card);
     }
 }
@@ -308,10 +333,36 @@ void UserProfilePanel::loadFavorites() {
     });
 }
 
+void UserProfilePanel::loadDrafts() {
+    if (!m_self) {
+        return;
+    }
+    clearFeed(m_draftFeed);
+    QPointer<UserProfilePanel> guard(this);
+    ApiClient::instance().get("/knowledge/article/mine?page=1&pageSize=50&status=DRAFT",
+                              [this, guard](const ApiResponse &r) {
+        if (!guard) {
+            return;
+        }
+        if (!r.ok) {
+            notify::warn(this, r.message);
+            return;
+        }
+        const QJsonArray list = r.object().value("list").toArray();
+        bool has = false;
+        appendFeedCards(list, m_draftFeed, has, true);
+        m_draftEmpty->setVisible(!has);
+        m_draftScroll->setVisible(has);
+    });
+}
+
 void UserProfilePanel::switchTab(int index) {
     m_tabStack->setCurrentIndex(index);
     m_pubTab->setChecked(index == 0);
     m_favTab->setChecked(index == 1);
+    if (m_draftTab) {
+        m_draftTab->setChecked(index == 2);
+    }
 }
 
 } // namespace kb

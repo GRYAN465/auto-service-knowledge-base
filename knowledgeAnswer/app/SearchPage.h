@@ -1,5 +1,7 @@
 #pragma once
 
+#include "app/RefreshablePage.h"
+
 #include <QJsonArray>
 #include <QWidget>
 
@@ -21,11 +23,13 @@ class UserProfilePanel;
  * 知识社区页（路由 knowledge.search）：
  *   顶栏搜索 + 最新/最热 + 常用标签 + FeedCard 无限滚动。
  */
-class SearchPage : public QWidget {
+class SearchPage : public QWidget, public RefreshablePage {
     Q_OBJECT
 
 public:
     explicit SearchPage(const QString &title, QWidget *parent = nullptr);
+
+    void refreshPage() override;
 
 private:
     void buildUi();

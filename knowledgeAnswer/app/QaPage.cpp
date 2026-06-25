@@ -38,6 +38,13 @@ QaPage::QaPage(const QString &title, QWidget *parent) : QWidget(parent), m_title
     loadSessions();
 }
 
+void QaPage::refreshPage() {
+    loadSessions();
+    if (m_sessionId > 0) {
+        openSession(m_sessionId);
+    }
+}
+
 void QaPage::buildUi() {
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(0, 0, 0, 0);

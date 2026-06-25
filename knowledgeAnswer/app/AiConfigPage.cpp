@@ -34,6 +34,12 @@ AiConfigPage::AiConfigPage(const QString &title, QWidget *parent) : QWidget(pare
     loadConfig();
 }
 
+void AiConfigPage::refreshPage() {
+    if (m_baseUrl) {
+        loadConfig();
+    }
+}
+
 void AiConfigPage::buildUi() {
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(24, 20, 24, 24);

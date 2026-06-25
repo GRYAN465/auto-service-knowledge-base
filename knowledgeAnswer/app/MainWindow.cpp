@@ -205,6 +205,15 @@ void MainWindow::buildUi() {
     setCentralWidget(central);
 
     m_router = new PageRouter(m_stack, this);
+    connect(m_router, &PageRouter::pageShown, this, [this](const QString &, bool firstVisit) {
+        updateTopBarRefresh();
+        if (firstVisit) {
+            return;
+        }
+        if (auto *page = dynamic_cast<RefreshablePage *>(m_router->currentWidget())) {
+            page->refreshPage();
+        }
+    });
 
     connect(m_nav, &QTreeWidget::currentItemChanged, this,
             [this](QTreeWidgetItem *, QTreeWidgetItem *) { navigateToCurrent(); });
@@ -305,7 +314,6 @@ void MainWindow::navigateToCurrent() {
     }
     m_router->navigate(name);
     m_pageTitle->setText(item->text(0));
-    updateTopBarRefresh();
 }
 
 void MainWindow::updateTopBarRefresh() {

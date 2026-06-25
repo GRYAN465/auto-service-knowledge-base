@@ -1,6 +1,7 @@
 #include "app/ProfilePage.h"
 
 #include "app/ArticleDetailPanel.h"
+#include "app/ArticleEditorDialog.h"
 #include "app/RefreshablePage.h"
 #include "app/UserProfilePanel.h"
 
@@ -26,6 +27,13 @@ ProfilePage::ProfilePage(const QString &title, QWidget *parent) : QWidget(parent
         m_detail->showArticle(id);
         m_stack->setCurrentWidget(m_detail);
     });
+    connect(m_profile, &UserProfilePanel::openDraft, this, [this](qint64 id) {
+        ArticleEditorDialog dlg(id, this);
+        dlg.exec();
+        if (dlg.dirty()) {
+            m_profile->reload();
+        }
+    });
     connect(m_detail, &ArticleDetailPanel::backRequested, this, [this]() {
         m_stack->setCurrentWidget(m_profile);
         m_profile->reload();
@@ -43,8 +51,14 @@ ProfilePage::ProfilePage(const QString &title, QWidget *parent) : QWidget(parent
 }
 
 void ProfilePage::refreshPage() {
-    if (m_stack && m_stack->currentWidget() == m_profile) {
+    if (!m_stack) {
+        return;
+    }
+    QWidget *cur = m_stack->currentWidget();
+    if (cur == m_profile) {
         m_profile->reload();
+    } else if (cur == m_detail) {
+        m_detail->reload();
     }
 }
 

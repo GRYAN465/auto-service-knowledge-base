@@ -30,6 +30,10 @@ public:
 
     QWidget *currentWidget() const;
 
+signals:
+    /** firstVisit=true 表示本次刚懒加载创建，false 表示再次切回已有页面。 */
+    void pageShown(const QString &name, bool firstVisit);
+
 private:
     QStackedWidget *m_stack;
     QHash<QString, Factory> m_factories;

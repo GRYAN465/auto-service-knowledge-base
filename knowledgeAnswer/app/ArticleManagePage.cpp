@@ -61,6 +61,10 @@ ArticleManagePage::ArticleManagePage(const QString &title, QWidget *parent)
     refresh();
 }
 
+void ArticleManagePage::refreshPage() {
+    refresh();
+}
+
 void ArticleManagePage::buildUi() {
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(24, 20, 24, 24);

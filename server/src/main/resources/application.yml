@@ -69,9 +69,9 @@ kb:
     interest-tag-sim: 0.30
     interest-keyword-hit: 0.25
     interest-like-tag: 0.10
-    hot-view-weight: 0.45
-    hot-like-weight: 0.35
-    hot-comment-weight: 0.20
+    hot-view-weight: 0.30
+    hot-like-weight: 0.45
+    hot-comment-weight: 0.25
     max-embed-articles: 120
 
 logging:

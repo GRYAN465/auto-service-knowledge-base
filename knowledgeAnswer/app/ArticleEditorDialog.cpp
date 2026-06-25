@@ -1,6 +1,7 @@
 #include "app/ArticleEditorDialog.h"
 
 #include "common/TableStyle.h"
+#include "core/auth/Session.h"
 #include "core/network/ApiClient.h"
 #include "core/notify/Notify.h"
 
@@ -26,6 +27,7 @@
 #include <QTextEdit>
 #include <QTextListFormat>
 #include <QVBoxLayout>
+#include <functional>
 
 namespace kb {
 
@@ -63,32 +65,17 @@ void flattenCategories(QComboBox *box, const QJsonArray &nodes, int depth) {
 
 } // namespace
 
-ArticleEditorDialog::ArticleEditorDialog(qint64 articleId, QWidget *parent, bool submitForAudit)
-    : QDialog(parent), m_articleId(articleId), m_submitForAudit(submitForAudit) {
-    if (submitForAudit) {
-        setWindowTitle(articleId > 0 ? QStringLiteral("编辑并提交") : QStringLiteral("上传知识"));
-    } else {
-        setWindowTitle(articleId > 0 ? QStringLiteral("编辑知识") : QStringLiteral("新建知识"));
-    }
+ArticleEditorDialog::ArticleEditorDialog(qint64 articleId, QWidget *parent)
+    : QDialog(parent), m_articleId(articleId) {
+    setWindowTitle(articleId > 0 ? QStringLiteral("编辑知识") : QStringLiteral("新建知识"));
     setMinimumSize(820, 640);
     buildUi();
     loadCategories();
     loadTags();
-    if (m_submitForAudit) {
-        m_attachHint->setVisible(false);
-        m_attachTable->setVisible(false);
-        m_attachUpload->setVisible(false);
-        m_attachDownload->setVisible(false);
-        m_attachDelete->setVisible(false);
-        m_saveButton->setText(QStringLiteral("提交审核"));
-    }
     if (m_articleId > 0) {
-        // 标题/正文等基础字段先填；分类/标签选中项在各自列表异步到位后由回调回填。
         loadDetailIfEditing();
-        if (!m_submitForAudit) {
-            refreshAttachments();
-            setAttachmentPanelEnabled(true);
-        }
+        refreshAttachments();
+        setAttachmentPanelEnabled(true);
     } else {
         setAttachmentPanelEnabled(false);
     }
@@ -119,7 +106,6 @@ void ArticleEditorDialog::buildUi() {
     form->addRow(QStringLiteral("摘要"), m_summary);
     root->addLayout(form);
 
-    // 标签 + 正文左右分栏
     auto *splitter = new QSplitter(Qt::Horizontal, this);
 
     auto *tagBox = new QWidget(splitter);
@@ -136,7 +122,6 @@ void ArticleEditorDialog::buildUi() {
     contentLayout->setContentsMargins(0, 0, 0, 0);
     contentLayout->setSpacing(6);
 
-    // 富文本工具栏
     auto *toolbar = new QHBoxLayout();
     auto *bold = new QPushButton(QStringLiteral("B"), contentBox);
     auto *italic = new QPushButton(QStringLiteral("I"), contentBox);
@@ -185,7 +170,6 @@ void ArticleEditorDialog::buildUi() {
         m_content->textCursor().createList(QTextListFormat::ListDisc);
     });
 
-    // 附件子面板
     m_attachHint = new QLabel(QStringLiteral("附件"), this);
     root->addWidget(m_attachHint);
     m_attachTable = new QTableWidget(this);
@@ -217,16 +201,31 @@ void ArticleEditorDialog::buildUi() {
     root->addWidget(m_status);
 
     auto *bottom = new QHBoxLayout();
-    m_saveButton = new QPushButton(QStringLiteral("保存"), this);
+    m_saveButton = new QPushButton(QStringLiteral("保存草稿"), this);
     m_saveButton->setObjectName("PrimaryButton");
+    m_submitButton = new QPushButton(QStringLiteral("提交审核"), this);
+    m_submitButton->setObjectName("GhostButton");
+    m_submitButton->setVisible(Session::instance().hasPermission(QStringLiteral("knowledge:article:submit")));
     auto *closeButton = new QPushButton(QStringLiteral("关闭"), this);
     closeButton->setObjectName("GhostButton");
     bottom->addStretch();
     bottom->addWidget(m_saveButton);
+    bottom->addWidget(m_submitButton);
     bottom->addWidget(closeButton);
     root->addLayout(bottom);
-    connect(m_saveButton, &QPushButton::clicked, this, &ArticleEditorDialog::save);
+    connect(m_saveButton, &QPushButton::clicked, this, &ArticleEditorDialog::saveDraft);
+    connect(m_submitButton, &QPushButton::clicked, this, &ArticleEditorDialog::submitAudit);
     connect(closeButton, &QPushButton::clicked, this, &QDialog::accept);
+}
+
+QString ArticleEditorDialog::detailApiPath() const {
+    if (m_articleId <= 0) {
+        return {};
+    }
+    if (Session::instance().hasPermission(QStringLiteral("knowledge:article:list"))) {
+        return "/knowledge/article/" + QString::number(m_articleId);
+    }
+    return "/knowledge/article/mine/" + QString::number(m_articleId);
 }
 
 void ArticleEditorDialog::loadCategories() {
@@ -234,7 +233,7 @@ void ArticleEditorDialog::loadCategories() {
         if (r.ok) {
             flattenCategories(m_category, r.data.toArray(), 0);
             if (m_articleId > 0) {
-                loadDetailIfEditing(); // 分类到位后再回填选中项
+                loadDetailIfEditing();
             }
         }
     });
@@ -255,7 +254,7 @@ void ArticleEditorDialog::loadTags() {
             item->setData(Qt::UserRole, o.value("id").toVariant());
         }
         if (m_articleId > 0) {
-            loadDetailIfEditing(); // 标签到位后再回填勾选
+            loadDetailIfEditing();
         }
     });
 }
@@ -264,8 +263,7 @@ void ArticleEditorDialog::loadDetailIfEditing() {
     if (m_articleId <= 0) {
         return;
     }
-    ApiClient::instance().get("/knowledge/article/" + QString::number(m_articleId),
-                              [this](const ApiResponse &r) {
+    ApiClient::instance().get(detailApiPath(), [this](const ApiResponse &r) {
         if (!r.ok) {
             setStatus(r.message, true);
             return;
@@ -331,44 +329,53 @@ void ArticleEditorDialog::submitForAudit(qint64 articleId) {
     });
 }
 
-void ArticleEditorDialog::save() {
+void ArticleEditorDialog::persistDraft(const std::function<void(bool ok)> &then) {
     if (m_title->text().trimmed().isEmpty()) {
         setStatus(QStringLiteral("标题不能为空"), true);
+        then(false);
         return;
     }
     const QJsonObject body = collectBody();
     if (m_articleId > 0) {
         ApiClient::instance().put("/knowledge/article/" + QString::number(m_articleId), body,
-                                  [this](const ApiResponse &r) {
+                                  [this, then](const ApiResponse &r) {
             if (!r.ok) {
                 setStatus(r.message, true);
+                then(false);
                 return;
             }
             m_dirty = true;
-            if (m_submitForAudit) {
-                submitForAudit(m_articleId);
-                return;
-            }
             setStatus(QStringLiteral("已保存（版本 %1）").arg(r.object().value("currentVersion").toInt()));
+            then(true);
         });
     } else {
-        ApiClient::instance().post("/knowledge/article", body, [this](const ApiResponse &r) {
+        ApiClient::instance().post("/knowledge/article", body, [this, then](const ApiResponse &r) {
             if (!r.ok) {
                 setStatus(r.message, true);
+                then(false);
                 return;
             }
             m_articleId = static_cast<qint64>(r.object().value("id").toDouble());
             m_dirty = true;
-            if (m_submitForAudit) {
-                submitForAudit(m_articleId);
-                return;
-            }
             setWindowTitle(QStringLiteral("编辑知识"));
             setAttachmentPanelEnabled(true);
             refreshAttachments();
             setStatus(QStringLiteral("草稿已保存，现在可以上传附件"));
+            then(true);
         });
     }
+}
+
+void ArticleEditorDialog::saveDraft() {
+    persistDraft([](bool) {});
+}
+
+void ArticleEditorDialog::submitAudit() {
+    persistDraft([this](bool ok) {
+        if (ok && m_articleId > 0) {
+            submitForAudit(m_articleId);
+        }
+    });
 }
 
 void ArticleEditorDialog::refreshAttachments() {
