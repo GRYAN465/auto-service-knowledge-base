@@ -141,12 +141,47 @@ class ChromaVectorStore(VectorStore):
         return conds[0] if len(conds) == 1 else {"$and": conds}
 
 
-_store: VectorStore | None = None
+_KNOWLEDGE_TYPES = ("SCRIPT", "TRAIN", "PRODUCT", "OFFICE")
+
+_stores: dict[str, VectorStore] = {}
 
 
-def get_vector_store() -> VectorStore:
-    """进程内单例，复用 Chroma client。"""
-    global _store
-    if _store is None:
-        _store = ChromaVectorStore(settings.vector_store_dir, settings.collection_name)
-    return _store
+def _collection_name(knowledge_type: str) -> str:
+    """SCRIPT → kb_knowledge_script"""
+    return f"kb_knowledge_{knowledge_type.lower()}"
+
+
+def get_vector_store(knowledge_type: str | None = None) -> VectorStore:
+    """获取对应知识类型的向量库。
+
+    Args:
+        knowledge_type: ``SCRIPT`` / ``TRAIN`` / ``PRODUCT`` / ``OFFICE`` 之一。
+                        ``None`` 返回旧版单 collection ``kb_knowledge``（向后兼容）。
+    """
+    if knowledge_type is None:
+        return _get_or_create("kb_knowledge")
+    return _get_or_create(_collection_name(knowledge_type))
+
+
+def clear_all() -> int:
+    """清空所有已知类型的 collection + 默认 collection。返回清除的块总数。"""
+    total = 0
+    for kt in _KNOWLEDGE_TYPES:
+        store = get_vector_store(kt)  # uses cache
+        total += store.clear_all()
+    default = get_vector_store()  # uses cache
+    total += default.clear_all()
+    # After clear_all(), collections were deleted and recreated.
+    # The cached ChromaVectorStore instances have stale _col references.
+    # Clear cache so next get_vector_store() creates fresh instances.
+    _stores.clear()
+    return total
+
+
+def _get_or_create(name: str, cache: bool = True) -> VectorStore:
+    if cache and name in _stores:
+        return _stores[name]
+    store = ChromaVectorStore(settings.vector_store_dir, name)
+    if cache:
+        _stores[name] = store
+    return store

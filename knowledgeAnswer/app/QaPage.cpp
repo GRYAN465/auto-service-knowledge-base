@@ -5,6 +5,7 @@
 #include "core/network/ApiClient.h"
 #include "core/notify/Notify.h"
 
+#include <QComboBox>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QJsonArray>
@@ -99,6 +100,20 @@ void QaPage::buildUi() {
     m_status->setObjectName("StatusLabel");
     chatLayout->addWidget(m_status);
 
+    auto *kbRow = new QHBoxLayout();
+    auto *kbLabel = new QLabel(QStringLiteral("知识库："), chatBox);
+    kbLabel->setStyleSheet("color:#6B7280; font-size:13px;");
+    m_kbSelector = new QComboBox(chatBox);
+    m_kbSelector->addItem(QStringLiteral("全部知识库"), QString());
+    m_kbSelector->addItem(QStringLiteral("客服话术库"), QStringLiteral("SCRIPT"));
+    m_kbSelector->addItem(QStringLiteral("培训学习库"), QStringLiteral("TRAIN"));
+    m_kbSelector->addItem(QStringLiteral("产品知识库"), QStringLiteral("PRODUCT"));
+    m_kbSelector->addItem(QStringLiteral("办公文档库"), QStringLiteral("OFFICE"));
+    m_kbSelector->setCurrentIndex(0);
+    kbRow->addWidget(kbLabel);
+    kbRow->addWidget(m_kbSelector, 1);
+    chatLayout->addLayout(kbRow);
+
     auto *inputBar = new QHBoxLayout();
     m_input = new QLineEdit(chatBox);
     m_input->setPlaceholderText(QStringLiteral("输入你的问题，回车发送"));
@@ -192,6 +207,10 @@ void QaPage::send() {
     body["question"] = question;
     if (m_sessionId > 0) {
         body["sessionId"] = m_sessionId;
+    }
+    const QString kt = m_kbSelector->currentData().toString();
+    if (!kt.isEmpty()) {
+        body["knowledgeType"] = kt;
     }
 
     QPointer<QaPage> self(this);
