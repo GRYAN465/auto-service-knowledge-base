@@ -59,7 +59,7 @@ def main() -> int:
     for name, content in SAMPLES.items():
         (storage / name).write_text(content, encoding="utf-8")
 
-    store = get_vector_store()
+    store = get_vector_store("SCRIPT")
     for article_id, name in [(90001, "refund.txt"), (90002, "shipping.md")]:
         text = parser.extract_text(name)  # 相对路径按 storage_dir 解析
         chunks = chunker.chunk_text(text)
@@ -73,7 +73,7 @@ def main() -> int:
 
     # 正常提问
     q = "退款多久到账？"
-    res = qa.answer(q, top_k=3)
+    res = qa.answer(q, knowledge_type="SCRIPT", top_k=3)
     print(f"\n[qa] {q!r} → mode={res['mode']} citations={len(res['citations'])}")
     print(f"     answer: {res['answer'][:80]}…")
     for c in res["citations"]:
@@ -81,7 +81,7 @@ def main() -> int:
               f" snippet={c['snippet'][:30]!r}…")
 
     # 空范围：无任何可命中知识 → no_hit
-    scoped = qa.answer(q, top_k=3, allowed_article_ids=[])
+    scoped = qa.answer(q, knowledge_type="SCRIPT", top_k=3, allowed_article_ids=[])
     print(f"\n[qa·allowed=[]] → mode={scoped['mode']} citations={len(scoped['citations'])}"
           f" answer={scoped['answer']!r}")
 
