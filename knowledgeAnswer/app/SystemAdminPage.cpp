@@ -1,5 +1,7 @@
 #include "app/SystemAdminPage.h"
 
+#include "app/RefreshablePage.h"
+#include "common/TableStyle.h"
 #include "core/network/ApiClient.h"
 #include "core/notify/Notify.h"
 
@@ -61,13 +63,7 @@ QString idsText(const QJsonObject &o, const QString &key) {
 
 QTableWidget *makeTable(QWidget *parent) {
     auto *table = new QTableWidget(parent);
-    table->setObjectName("DataTable");
-    table->setSelectionBehavior(QAbstractItemView::SelectRows);
-    table->setSelectionMode(QAbstractItemView::SingleSelection);
-    table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    table->setAlternatingRowColors(true);
-    table->verticalHeader()->setVisible(false);
-    table->horizontalHeader()->setStretchLastSection(true);
+    TableStyle::applyDataTable(table);
     return table;
 }
 
@@ -220,9 +216,8 @@ void SystemAdminPage::buildUi() {
     m_toggleStatus = new QPushButton(QStringLiteral("启停"), this);
     m_resetPassword = new QPushButton(QStringLiteral("改密"), this);
     m_assignPermissions = new QPushButton(QStringLiteral("分配权限"), this);
-    auto *refreshButton = new QPushButton(QStringLiteral("刷新"), this);
     m_add->setObjectName("PrimaryButton");
-    for (QPushButton *button : {m_edit, m_delete, m_toggleStatus, m_resetPassword, m_assignPermissions, refreshButton}) {
+    for (QPushButton *button : {m_edit, m_delete, m_toggleStatus, m_resetPassword, m_assignPermissions}) {
         button->setObjectName("GhostButton");
     }
     toolbar->addWidget(m_add);
@@ -232,7 +227,6 @@ void SystemAdminPage::buildUi() {
     toolbar->addWidget(m_resetPassword);
     toolbar->addWidget(m_assignPermissions);
     toolbar->addStretch();
-    toolbar->addWidget(refreshButton);
     root->addLayout(toolbar);
 
     m_status = new QLabel(this);
@@ -260,13 +254,16 @@ void SystemAdminPage::buildUi() {
         m_assignPermissions->setVisible(m_routeName == "system.role");
     }
 
-    connect(refreshButton, &QPushButton::clicked, this, &SystemAdminPage::refresh);
     connect(m_add, &QPushButton::clicked, this, &SystemAdminPage::createItem);
     connect(m_edit, &QPushButton::clicked, this, &SystemAdminPage::editItem);
     connect(m_delete, &QPushButton::clicked, this, &SystemAdminPage::deleteItem);
     connect(m_toggleStatus, &QPushButton::clicked, this, &SystemAdminPage::toggleUserStatus);
     connect(m_resetPassword, &QPushButton::clicked, this, &SystemAdminPage::resetUserPassword);
     connect(m_assignPermissions, &QPushButton::clicked, this, &SystemAdminPage::assignRolePermissions);
+}
+
+void SystemAdminPage::refreshPage() {
+    refresh();
 }
 
 void SystemAdminPage::refresh() {
@@ -328,7 +325,8 @@ void SystemAdminPage::refreshPermissions() {
                              QStringLiteral("权限码"), QStringLiteral("路由"), QStringLiteral("排序"),
                              QStringLiteral("状态")});
         fillPermissionRows(r.data.toArray(), 0);
-        m_table->resizeColumnsToContents();
+        TableStyle::configureTitleTable(m_table, 1);
+        TableStyle::setItemTooltipFromText(m_table);
         setStatus(QStringLiteral("已加载 %1 条").arg(m_table->rowCount()));
     });
 }
@@ -382,7 +380,12 @@ void SystemAdminPage::fillPageTable(const QJsonObject &pageData, const QStringLi
             m_table->setItem(row, col, item);
         }
     }
-    m_table->resizeColumnsToContents();
+    int stretchColumn = 1;
+    if (m_routeName == QStringLiteral("system.user")) {
+        stretchColumn = 2; // 姓名
+    }
+    TableStyle::configureTitleTable(m_table, stretchColumn);
+    TableStyle::setItemTooltipFromText(m_table);
     setStatus(QStringLiteral("已加载 %1 条").arg(list.size()));
 }
 
@@ -418,7 +421,8 @@ void SystemAdminPage::fillLogTable(QTableWidget *table, const QJsonObject &pageD
             table->setItem(row, col, new QTableWidgetItem(values.at(col)));
         }
     }
-    table->resizeColumnsToContents();
+    TableStyle::configureTitleTable(table, headers.size() - 1);
+    TableStyle::setItemTooltipFromText(table);
 }
 
 void SystemAdminPage::createItem() {
@@ -557,7 +561,7 @@ void SystemAdminPage::setStatus(const QString &text, bool error) {
         return;
     }
     m_status->setText(text);
-    m_status->setStyleSheet(error ? "color:#DC2626;" : "color:#6B7280;");
+    m_status->setStyleSheet(error ? "color:#B94A48;" : "color:#757575;");
     if (error && !text.isEmpty()) {
         notify::warn(this, text);
     }

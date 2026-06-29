@@ -1,5 +1,7 @@
 #pragma once
 
+#include "app/RefreshablePage.h"
+
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QWidget>
@@ -7,6 +9,7 @@
 class QLabel;
 class QPushButton;
 class QTableWidget;
+class QTabWidget;
 class QTreeWidget;
 class QTreeWidgetItem;
 
@@ -18,11 +21,13 @@ namespace kb {
  *   - 标签 Tab：表格 + 颜色色块 + QColorDialog 取色
  * 路由名固定为 category（见 V2 菜单种子 303 节点）。按钮按 hasPermission 启停。
  */
-class KnowledgeBasePage : public QWidget {
+class KnowledgeBasePage : public QWidget, public RefreshablePage {
     Q_OBJECT
 
 public:
     explicit KnowledgeBasePage(const QString &title, QWidget *parent = nullptr);
+
+    void refreshPage() override;
 
 private:
     void buildUi();
@@ -51,6 +56,7 @@ private:
 
     QString m_title;
 
+    QTabWidget *m_tabs = nullptr;
     QTreeWidget *m_catTree = nullptr;
     QLabel *m_catStatus = nullptr;
     QPushButton *m_catAddRoot = nullptr;

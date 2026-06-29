@@ -1,6 +1,7 @@
 #include "app/ArticleManagePage.h"
 
 #include "app/ArticleEditorDialog.h"
+#include "common/TableStyle.h"
 #include "core/auth/Session.h"
 #include "core/network/ApiClient.h"
 #include "core/notify/Notify.h"
@@ -57,6 +58,10 @@ ArticleManagePage::ArticleManagePage(const QString &title, QWidget *parent)
     : QWidget(parent), m_title(title) {
     buildUi();
     loadCategoryFilter();
+    refresh();
+}
+
+void ArticleManagePage::refreshPage() {
     refresh();
 }
 
@@ -134,19 +139,12 @@ void ArticleManagePage::buildUi() {
     root->addWidget(m_status);
 
     m_table = new QTableWidget(this);
-    m_table->setObjectName("DataTable");
     m_table->setColumnCount(7);
     m_table->setHorizontalHeaderLabels({QStringLiteral("标题"), QStringLiteral("分类"),
                                         QStringLiteral("类型"), QStringLiteral("状态"),
                                         QStringLiteral("作者"), QStringLiteral("浏览"),
                                         QStringLiteral("更新时间")});
-    m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
-    m_table->setSelectionMode(QAbstractItemView::SingleSelection);
-    m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    m_table->setAlternatingRowColors(true);
-    m_table->verticalHeader()->setVisible(false);
-    m_table->horizontalHeader()->setStretchLastSection(true);
-    m_table->setColumnWidth(0, 280);
+    TableStyle::configureTitleTable(m_table, 0);
     root->addWidget(m_table, 1);
     connect(m_table, &QTableWidget::doubleClicked, this, &ArticleManagePage::editArticle);
 }
@@ -199,6 +197,7 @@ void ArticleManagePage::refresh() {
                 QString::number(static_cast<qint64>(o.value("viewCount").toDouble()))));
             m_table->setItem(row, 6, new QTableWidgetItem(o.value("updateTime").toString().replace('T', ' ')));
         }
+        TableStyle::setItemTooltipFromText(m_table);
         setStatus(QStringLiteral("共 %1 条").arg(static_cast<qint64>(d.value("total").toDouble())));
     });
 }
@@ -307,7 +306,7 @@ QString ArticleManagePage::selectedTitle() const {
 
 void ArticleManagePage::setStatus(const QString &text, bool error) {
     m_status->setText(text);
-    m_status->setStyleSheet(error ? "color:#DC2626;" : "color:#6B7280;");
+    m_status->setStyleSheet(error ? "color:#B94A48;" : "color:#757575;");
     if (error && !text.isEmpty()) {
         notify::warn(this, text);
     }

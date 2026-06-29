@@ -26,15 +26,20 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+import com.kb.knowledge.search.SearchService;
+import com.kb.knowledge.search.dto.SearchArticleVO;
+
 @Tag(name = "知识管理-知识")
 @RestController
 @RequestMapping("/knowledge/article")
 public class ArticleController {
 
     private final ArticleService articleService;
+    private final SearchService searchService;
 
-    public ArticleController(ArticleService articleService) {
+    public ArticleController(ArticleService articleService, SearchService searchService) {
         this.articleService = articleService;
+        this.searchService = searchService;
     }
 
     @Operation(summary = "知识分页（标题/分类/标签/状态/类型）")
@@ -48,6 +53,24 @@ public class ArticleController {
                                                       @RequestParam(required = false) String status,
                                                       @RequestParam(required = false) String knowledgeType) {
         return Result.ok(articleService.page(page, pageSize, keyword, categoryId, tagId, status, knowledgeType));
+    }
+
+    @Operation(summary = "我发布的知识（个人中心）")
+    @GetMapping("/mine")
+    @PreAuthorize("isAuthenticated()")
+    public Result<PageResult<SearchArticleVO>> mine(@RequestParam(defaultValue = "1") long page,
+                                                    @RequestParam(defaultValue = "20") long pageSize,
+                                                    @RequestParam(required = false) String status) {
+        var raw = articleService.minePage(page, pageSize, status);
+        return Result.ok(new PageResult<>(raw.getTotal(), raw.getPage(), raw.getPageSize(),
+                searchService.toSearchItems(raw.getList())));
+    }
+
+    @Operation(summary = "作者查看自己的知识详情（含草稿，仅本人）")
+    @GetMapping("/mine/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public Result<ArticleDetailVO> mineDetail(@PathVariable Long id) {
+        return Result.ok(articleService.mineDetail(id));
     }
 
     @Operation(summary = "知识详情（正文 + 标签 + 附件）")

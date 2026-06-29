@@ -1,6 +1,7 @@
 #include "app/QaPage.h"
 
 #include "app/ArticleDetailDialog.h"
+#include "common/ThemeIcons.h"
 #include "core/network/ApiClient.h"
 #include "core/notify/Notify.h"
 
@@ -37,6 +38,13 @@ QString modeText(const QString &mode) {
 QaPage::QaPage(const QString &title, QWidget *parent) : QWidget(parent), m_title(title) {
     buildUi();
     loadSessions();
+}
+
+void QaPage::refreshPage() {
+    loadSessions();
+    if (m_sessionId > 0) {
+        openSession(m_sessionId);
+    }
 }
 
 void QaPage::buildUi() {
@@ -282,11 +290,11 @@ void QaPage::addAnswerBubble(const QString &answer, const QString &mode,
         cl->setContentsMargins(10, 8, 10, 8);
         cl->setSpacing(4);
 
-        QString head = QString("<a href=\"%1\" style=\"color:#2563EB; text-decoration:none; font-weight:600;\">%2</a>")
+        QString head = QString("<a href=\"%1\" style=\"color:#6B7F74; text-decoration:none; font-weight:600;\">%2</a>")
                            .arg(articleId)
                            .arg(title.toHtmlEscaped());
         if (score > 0) {
-            head += QString("　<span style='color:#9098A3;'>相关度 %1</span>").arg(score, 0, 'f', 2);
+            head += QString("　<span style='color:#757575;'>相关度 %1</span>").arg(score, 0, 'f', 2);
         }
         auto *titleLabel = new QLabel(head, card);
         titleLabel->setTextFormat(Qt::RichText);
@@ -315,12 +323,10 @@ void QaPage::addAnswerBubble(const QString &answer, const QString &mode,
         auto *fl = new QHBoxLayout(fbRow);
         fl->setContentsMargins(0, 0, 0, 0);
         fl->setSpacing(6);
-        auto *up = new QPushButton(QStringLiteral("👍 有用"), fbRow);
-        auto *down = new QPushButton(QStringLiteral("👎 没用"), fbRow);
-        up->setObjectName("GhostButton");
-        down->setObjectName("GhostButton");
-        up->setCursor(Qt::PointingHandCursor);
-        down->setCursor(Qt::PointingHandCursor);
+        auto *up = new QPushButton(fbRow);
+        auto *down = new QPushButton(fbRow);
+        ThemeIcons::applyIconButton(up, ThemeIcons::Kind::ThumbUp, QStringLiteral("回答有用"));
+        ThemeIcons::applyIconButton(down, ThemeIcons::Kind::ThumbDown, QStringLiteral("回答没用"));
         fl->addWidget(up);
         fl->addWidget(down);
         fl->addStretch();
@@ -358,11 +364,17 @@ void QaPage::sendFeedback(qint64 messageId, bool helpful, QPushButton *up, QPush
         }
         if (upP) {
             upP->setEnabled(false);
-            if (helpful) upP->setText(QStringLiteral("👍 已反馈"));
+            if (helpful) {
+                ThemeIcons::setIcon(upP, ThemeIcons::Kind::ThumbUpFilled);
+                upP->setToolTip(QStringLiteral("已反馈：有用"));
+            }
         }
         if (downP) {
             downP->setEnabled(false);
-            if (!helpful) downP->setText(QStringLiteral("👎 已反馈"));
+            if (!helpful) {
+                ThemeIcons::setIcon(downP, ThemeIcons::Kind::ThumbDownFilled);
+                downP->setToolTip(QStringLiteral("已反馈：没用"));
+            }
         }
         self->setStatus(QStringLiteral("感谢反馈！"));
     });
@@ -390,7 +402,7 @@ void QaPage::scrollToBottom() {
 
 void QaPage::setStatus(const QString &text, bool error) {
     m_status->setText(text);
-    m_status->setStyleSheet(error ? "color:#DC2626;" : "color:#6B7280;");
+    m_status->setStyleSheet(error ? "color:#B94A48;" : "color:#757575;");
     if (error && !text.isEmpty()) {
         notify::warn(this, text);
     }

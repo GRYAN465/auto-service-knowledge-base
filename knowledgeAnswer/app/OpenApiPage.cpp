@@ -1,5 +1,8 @@
 #include "app/OpenApiPage.h"
 
+#include "app/RefreshablePage.h"
+#include "common/TableStyle.h"
+
 #include "core/auth/Session.h"
 #include "core/network/ApiClient.h"
 #include "core/notify/Notify.h"
@@ -58,13 +61,7 @@ QComboBox *statusBox(QFormLayout *form, const QString &value) {
 }
 
 void setupTable(QTableWidget *table) {
-    table->setObjectName("DataTable");
-    table->setSelectionBehavior(QAbstractItemView::SelectRows);
-    table->setSelectionMode(QAbstractItemView::SingleSelection);
-    table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    table->setAlternatingRowColors(true);
-    table->verticalHeader()->setVisible(false);
-    table->horizontalHeader()->setStretchLastSection(true);
+    TableStyle::applyDataTable(table);
 }
 
 void setScopeChecks(const QString &scope, QCheckBox *search, QCheckBox *detail, QCheckBox *qa) {
@@ -199,9 +196,8 @@ void OpenApiPage::buildUi() {
     m_edit = new QPushButton(QStringLiteral("编辑"), this);
     m_delete = new QPushButton(QStringLiteral("删除"), this);
     m_resetSecret = new QPushButton(QStringLiteral("重置密钥"), this);
-    auto *refreshButton = new QPushButton(QStringLiteral("刷新"), this);
     m_add->setObjectName("PrimaryButton");
-    for (QPushButton *button : {query, m_edit, m_delete, m_resetSecret, refreshButton}) {
+    for (QPushButton *button : {query, m_edit, m_delete, m_resetSecret}) {
         button->setObjectName("GhostButton");
     }
 
@@ -214,7 +210,6 @@ void OpenApiPage::buildUi() {
     toolbar->addWidget(m_delete);
     toolbar->addWidget(m_resetSecret);
     toolbar->addStretch();
-    toolbar->addWidget(refreshButton);
     root->addLayout(toolbar);
 
     m_status = new QLabel(this);
@@ -229,11 +224,7 @@ void OpenApiPage::buildUi() {
                                         QStringLiteral("状态"), QStringLiteral("限流/分钟"),
                                         QStringLiteral("授权范围"), QStringLiteral("备注"),
                                         QStringLiteral("创建时间")});
-    m_table->setColumnWidth(0, 70);
-    m_table->setColumnWidth(1, 170);
-    m_table->setColumnWidth(2, 260);
-    m_table->setColumnWidth(3, 160);
-    m_table->setColumnWidth(6, 150);
+    TableStyle::configureTitleTable(m_table, 1);
     root->addWidget(m_table, 1);
 
     m_add->setEnabled(Session::instance().hasPermission(QStringLiteral("openapi:app:create")));
@@ -242,7 +233,6 @@ void OpenApiPage::buildUi() {
     m_delete->setEnabled(Session::instance().hasPermission(QStringLiteral("openapi:app:delete")));
 
     connect(query, &QPushButton::clicked, this, &OpenApiPage::refresh);
-    connect(refreshButton, &QPushButton::clicked, this, &OpenApiPage::refresh);
     connect(m_keyword, &QLineEdit::returnPressed, this, &OpenApiPage::refresh);
     connect(m_statusFilter, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
             [this]() { refresh(); });
@@ -266,6 +256,10 @@ QString OpenApiPage::buildListPath() const {
         query.addQueryItem(QStringLiteral("status"), status);
     }
     return QStringLiteral("/openapi/app?") + query.toString(QUrl::FullyEncoded);
+}
+
+void OpenApiPage::refreshPage() {
+    refresh();
 }
 
 void OpenApiPage::refresh() {
@@ -304,7 +298,7 @@ void OpenApiPage::fillTable(const QJsonObject &pageData) {
             m_table->setItem(row, col, item);
         }
     }
-    m_table->resizeColumnsToContents();
+    TableStyle::setItemTooltipFromText(m_table);
     setStatus(QStringLiteral("已加载 %1 条").arg(list.size()));
 }
 
@@ -409,7 +403,7 @@ void OpenApiPage::setStatus(const QString &text, bool error) {
         return;
     }
     m_status->setText(text);
-    m_status->setStyleSheet(error ? "color:#DC2626;" : "color:#6B7280;");
+    m_status->setStyleSheet(error ? "color:#B94A48;" : "color:#757575;");
     if (error && !text.isEmpty()) {
         notify::warn(this, text);
     }

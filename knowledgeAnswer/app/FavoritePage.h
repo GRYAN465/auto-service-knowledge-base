@@ -1,5 +1,7 @@
 #pragma once
 
+#include "app/RefreshablePage.h"
+
 #include <QWidget>
 
 class QLabel;
@@ -14,11 +16,13 @@ namespace kb {
  *   - 双击行打开只读详情弹窗（ArticleDetailDialog）
  *   - 工具栏「取消收藏」DELETE /interaction/favorite/{articleId} 后刷新
  */
-class FavoritePage : public QWidget {
+class FavoritePage : public QWidget, public RefreshablePage {
     Q_OBJECT
 
 public:
     explicit FavoritePage(const QString &title, QWidget *parent = nullptr);
+
+    void refreshPage() override;
 
 private:
     void buildUi();

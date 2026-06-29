@@ -9,7 +9,7 @@ import com.kb.common.PageResult;
 import com.kb.common.Result;
 import com.kb.knowledge.article.ArticleService;
 import com.kb.knowledge.article.dto.ArticleDetailVO;
-import com.kb.knowledge.article.dto.ArticleListItemVO;
+import com.kb.knowledge.search.dto.SearchArticleVO;
 import com.kb.knowledge.search.SearchService;
 import com.kb.openapi.dto.OpenQaRequest;
 import com.kb.openapi.entity.OpenApp;
@@ -48,7 +48,7 @@ public class OpenApiController {
 
     @Operation(summary = "对外知识检索")
     @GetMapping("/search")
-    public Result<PageResult<ArticleListItemVO>> search(@RequestParam(defaultValue = "1") long page,
+    public Result<PageResult<SearchArticleVO>> search(@RequestParam(defaultValue = "1") long page,
                                                         @RequestParam(defaultValue = "20") long pageSize,
                                                         @RequestParam(required = false) String keyword,
                                                         @RequestParam(required = false) Long categoryId,
@@ -59,7 +59,7 @@ public class OpenApiController {
         int code = 0;
         try {
             app = authService.authenticate(request, "search", "");
-            return Result.ok(searchService.search(page, pageSize, keyword, categoryId, tagId,
+            return Result.ok(searchService.search(page, pageSize, keyword, categoryId, tagId, null, null,
                     authService.clientIp(request)));
         } catch (BusinessException e) {
             code = e.getCode();

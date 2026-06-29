@@ -450,9 +450,9 @@ public class InteractionService {
             KbArticle a = articles.get(s.getArticleId());
             vo.setArticleTitle(a == null ? null : a.getTitle());
             vo.setFromUserId(s.getFromUserId());
-            vo.setFromUserName(userNames.get(s.getFromUserId()));
+            vo.setFromUserName(displayUserName(userNames, s.getFromUserId()));
             vo.setToUserId(s.getToUserId());
-            vo.setToUserName(userNames.get(s.getToUserId()));
+            vo.setToUserName(displayUserName(userNames, s.getToUserId()));
             vo.setMessage(s.getMessage());
             vo.setReadStatus(s.getReadStatus());
             vo.setCreateTime(s.getCreateTime());
@@ -529,7 +529,18 @@ public class InteractionService {
         if (ids == null || ids.isEmpty()) {
             return Collections.emptyMap();
         }
-        return userMapper.selectBatchIds(ids).stream().collect(Collectors.toMap(SysUser::getId,
-                u -> StringUtils.hasText(u.getRealName()) ? u.getRealName() : u.getUsername(), (a, b) -> a));
+        return userMapper.selectList(Wrappers.<SysUser>lambdaQuery().in(SysUser::getId, ids))
+                .stream()
+                .collect(Collectors.toMap(SysUser::getId,
+                        u -> StringUtils.hasText(u.getRealName()) ? u.getRealName() : u.getUsername(),
+                        (a, b) -> a));
+    }
+
+    private String displayUserName(Map<Long, String> userNames, Long userId) {
+        if (userId == null) {
+            return null;
+        }
+        String name = userNames.get(userId);
+        return StringUtils.hasText(name) ? name : ("用户#" + userId);
     }
 }

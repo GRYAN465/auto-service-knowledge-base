@@ -1,5 +1,7 @@
 #pragma once
 
+#include "app/RefreshablePage.h"
+
 #include <QJsonObject>
 #include <QWidget>
 
@@ -18,11 +20,13 @@ namespace kb {
  *   - 工具栏（新增 / 编辑 / 删除 / 提交审核 / 上线 / 下线），按权限码启停
  * 编辑走 ArticleEditorDialog；状态机动作调对应 POST 后刷新。
  */
-class ArticleManagePage : public QWidget {
+class ArticleManagePage : public QWidget, public RefreshablePage {
     Q_OBJECT
 
 public:
     explicit ArticleManagePage(const QString &title, QWidget *parent = nullptr);
+
+    void refreshPage() override;
 
 private:
     void buildUi();

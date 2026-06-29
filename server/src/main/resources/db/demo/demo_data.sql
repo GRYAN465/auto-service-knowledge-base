@@ -16,6 +16,10 @@
 --
 -- 运行（PowerShell / cmd，注意用 utf8mb4 避免中文乱码）：
 --   mysql -u kb -p123456 --default-character-set=utf8mb4 kb < server/src/main/resources/db/demo/demo_data.sql
+-- 社区补充（30 条知识 + 普通用户 + 互动，需在本脚本之后执行）：
+--   mysql -u kb -p123456 --default-character-set=utf8mb4 kb < server/src/main/resources/db/demo/demo_data_community.sql
+-- batch2 补充（5 普通用户 + 50 条知识 + 随机互动，需在前两个脚本之后执行）：
+--   mysql -u kb -p123456 --default-character-set=utf8mb4 kb < server/src/main/resources/db/demo/demo_data_batch2.sql
 -- 或在 mysql 客户端内： SOURCE .../demo/demo_data.sql;
 -- =============================================================================
 
@@ -106,7 +110,21 @@ INSERT INTO kb_tag (id, name, color, sort, create_by, create_time, deleted) VALU
   (3005, '投诉',     '#DB2777', 5, 1001, NOW(), 0),
   (3006, '资费',     '#0891B2', 6, 1001, NOW(), 0),
   (3007, '激活',     '#7C3AED', 7, 1001, NOW(), 0),
-  (3008, 'VIP',      '#CA8A04', 8, 1001, NOW(), 0);
+  (3008, 'VIP',      '#CA8A04', 8, 1001, NOW(), 0),
+  (3009, '售前',     '#0EA5E9', 9, 1001, NOW(), 0),
+  (3010, '售后',     '#10B981', 10, 1001, NOW(), 0),
+  (3011, '5G',       '#6366F1', 11, 1001, NOW(), 0),
+  (3012, '宽带',     '#8B5CF6', 12, 1001, NOW(), 0),
+  (3013, '融合套餐', '#EC4899', 13, 1001, NOW(), 0),
+  (3014, '携号转网', '#14B8A6', 14, 1001, NOW(), 0),
+  (3015, '实名认证', '#F97316', 15, 1001, NOW(), 0),
+  (3016, '发票',     '#64748B', 16, 1001, NOW(), 0),
+  (3017, '故障报修', '#EF4444', 17, 1001, NOW(), 0),
+  (3018, '积分',     '#A855F7', 18, 1001, NOW(), 0),
+  (3019, '漫游',     '#06B6D4', 19, 1001, NOW(), 0),
+  (3020, '物联网',   '#84CC16', 20, 1001, NOW(), 0),
+  (3021, '政企',     '#475569', 21, 1001, NOW(), 0),
+  (3022, '校园',     '#F43F5E', 22, 1001, NOW(), 0);
 
 -- -----------------------------------------------------------------------------
 -- 5. 知识文章（覆盖全部状态：ONLINE / PENDING_AUDIT / DRAFT / OFFLINE / REJECTED）

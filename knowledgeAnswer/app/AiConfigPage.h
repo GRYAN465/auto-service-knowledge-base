@@ -1,5 +1,7 @@
 #pragma once
 
+#include "app/RefreshablePage.h"
+
 #include <QString>
 #include <QWidget>
 
@@ -20,11 +22,13 @@ namespace kb {
  *   - 向量索引：「重建全部在线知识索引」（复用 ai:index，按权限启用）
  * 仅管理员能看到本菜单（V11 只授 ADMIN）；页首再做一次防御性 hasPermission 校验。
  */
-class AiConfigPage : public QWidget {
+class AiConfigPage : public QWidget, public RefreshablePage {
     Q_OBJECT
 
 public:
     explicit AiConfigPage(const QString &title, QWidget *parent = nullptr);
+
+    void refreshPage() override;
 
 private:
     void buildUi();

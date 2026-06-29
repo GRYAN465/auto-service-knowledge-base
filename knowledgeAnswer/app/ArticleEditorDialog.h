@@ -25,7 +25,7 @@ class ArticleEditorDialog : public QDialog {
 public:
     explicit ArticleEditorDialog(qint64 articleId, QWidget *parent = nullptr);
 
-    /** 编辑过程中是否产生了需要外层刷新的变更（保存/附件增删）。 */
+    /** 编辑过程中是否产生了需要外层刷新的变更（保存/附件增删/提交审核）。 */
     bool dirty() const { return m_dirty; }
 
 private:
@@ -33,8 +33,12 @@ private:
     void loadCategories();
     void loadTags();
     void loadDetailIfEditing();
+    QString detailApiPath() const;
 
-    void save();
+    void saveDraft();
+    void submitAudit();
+    void submitForAudit(qint64 articleId);
+    void persistDraft(const std::function<void(bool ok)> &then);
     QJsonObject collectBody() const;
 
     // 附件子面板
@@ -59,6 +63,7 @@ private:
     QLabel *m_status = nullptr;
 
     QPushButton *m_saveButton = nullptr;
+    QPushButton *m_submitButton = nullptr;
     QTableWidget *m_attachTable = nullptr;
     QPushButton *m_attachUpload = nullptr;
     QPushButton *m_attachDownload = nullptr;

@@ -22,7 +22,7 @@ setup_logging()
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    """应用生命周期：启动时清空向量库（配合 Java 全量重建），关闭时清理资源。"""
+    """应用生命周期：可选启动时清空向量库（rebuild_on_startup），关闭时清理资源。"""
     logger.info("%s 启动（env=%s，向量库=%s）", settings.app_name, settings.env,
                 settings.vector_store_dir)
     if settings.rebuild_on_startup:
@@ -30,6 +30,7 @@ async def lifespan(_app: FastAPI):
         logger.info("启动自清：已清空 %d 条向量（Java 启动后将全量重建）", removed)
     else:
         logger.info("rebuild_on_startup=false，保留既有向量数据")
+    
     yield
     logger.info("%s 关闭", settings.app_name)
 
@@ -50,7 +51,7 @@ def root() -> dict:
     return {
         "service": settings.app_name,
         "status": "ok",
-        "phase": "M9.4 LLM 运行时配置下发（索引/检索 + /ai/qa + /ai/llm/config）+ 启动自清向量库",
+        "phase": "M9.4 LLM 运行时配置下发（索引/检索 + /ai/qa + /ai/llm/config）",
         "docs": "/docs",
     }
 

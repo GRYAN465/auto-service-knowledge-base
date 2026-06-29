@@ -42,6 +42,7 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -177,8 +178,13 @@ public class ArticleService {
         vo.setStatus(a.getStatus());
         vo.setSource(a.getSource());
         vo.setAuthorId(a.getAuthorId());
-        vo.setAuthorName(a.getAuthorId() == null ? null
-                : userNameMap(Set.of(a.getAuthorId())).get(a.getAuthorId()));
+        if (a.getAuthorId() != null) {
+            SysUser author = userMapper.selectById(a.getAuthorId());
+            if (author != null) {
+                vo.setAuthorName(StringUtils.hasText(author.getRealName()) ? author.getRealName() : author.getUsername());
+                vo.setAuthorUsername(author.getUsername());
+            }
+        }
         vo.setCurrentVersion(a.getCurrentVersion());
         vo.setOnlineTime(a.getOnlineTime());
         vo.setOfflineTime(a.getOfflineTime());
@@ -235,6 +241,28 @@ public class ArticleService {
                 .orderByDesc(KbArticleVersion::getVersionNo));
     }
 
+    /** 当前用户发布的知识（个人中心 Tab）。 */
+    public PageResult<KbArticle> minePage(long page, long pageSize, String status) {
+        Long userId = SecurityUtils.getUserIdOrNull();
+        if (userId == null) {
+            throw new BusinessException(ResultCode.UNAUTHORIZED, "未登录");
+        }
+        IPage<KbArticle> data = articleMapper.selectPage(new Page<>(page, pageSize),
+                Wrappers.<KbArticle>lambdaQuery()
+                        .eq(KbArticle::getAuthorId, userId)
+                        .eq(StringUtils.hasText(status), KbArticle::getStatus, status)
+                        .orderByDesc(KbArticle::getUpdateTime)
+                        .orderByDesc(KbArticle::getId));
+        return new PageResult<>(data.getTotal(), data.getCurrent(), data.getSize(), data.getRecords());
+    }
+
+    /** 作者查看自己的知识详情（含草稿/驳回，仅本人可见）。 */
+    public ArticleDetailVO mineDetail(Long id) {
+        KbArticle article = get(id);
+        requireAuthor(article);
+        return detail(id);
+    }
+
     // ---------------------------------------------------------------- 写入
 
     @Transactional
@@ -259,6 +287,7 @@ public class ArticleService {
     @Transactional
     public KbArticle update(Long id, ArticleRequest request) {
         KbArticle article = get(id);
+        requireAuthorOrKnowledgeManager(article);
         if (!DRAFT.equals(article.getStatus()) && !REJECTED.equals(article.getStatus())) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "仅草稿或已驳回的知识可编辑");
         }
@@ -282,6 +311,7 @@ public class ArticleService {
     @Transactional
     public void submit(Long id) {
         KbArticle article = get(id);
+        requireAuthorOrKnowledgeManager(article);
         if (!DRAFT.equals(article.getStatus()) && !REJECTED.equals(article.getStatus())) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "仅草稿或已驳回的知识可提交审核");
         }
@@ -438,5 +468,24 @@ public class ArticleService {
         return relations.stream().collect(Collectors.groupingBy(KbArticleTag::getArticleId,
                 Collectors.mapping(r -> tagNameById.getOrDefault(r.getTagId(), null),
                         Collectors.filtering(java.util.Objects::nonNull, Collectors.toList()))));
+    }
+
+    private void requireAuthor(KbArticle article) {
+        Long userId = SecurityUtils.getUserIdOrNull();
+        if (userId == null || !Objects.equals(userId, article.getAuthorId())) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "无权查看该知识");
+        }
+    }
+
+    /** 作者本人，或具备知识管理列表权限的管理员。 */
+    private void requireAuthorOrKnowledgeManager(KbArticle article) {
+        Long userId = SecurityUtils.getUserIdOrNull();
+        if (userId != null && Objects.equals(userId, article.getAuthorId())) {
+            return;
+        }
+        if (SecurityUtils.hasAuthority("knowledge:article:list")) {
+            return;
+        }
+        throw new BusinessException(ResultCode.FORBIDDEN, "无权操作该知识");
     }
 }

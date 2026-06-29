@@ -5,6 +5,7 @@ import com.kb.common.BusinessException;
 import com.kb.common.ResultCode;
 import com.kb.system.org.dto.OrgRequest;
 import com.kb.system.org.dto.OrgTreeVO;
+import com.kb.system.auth.dto.RegisterOrgOptionVO;
 import com.kb.system.org.entity.SysOrg;
 import com.kb.system.org.mapper.SysOrgMapper;
 import com.kb.system.user.entity.SysUser;
@@ -33,6 +34,28 @@ public class OrgService {
                 .orderByAsc(SysOrg::getSort)
                 .orderByAsc(SysOrg::getId));
         return buildTree(orgs);
+    }
+
+    /** 注册页：仅返回启用机构的扁平下拉列表。 */
+    public List<RegisterOrgOptionVO> listRegisterOptions() {
+        List<SysOrg> orgs = orgMapper.selectList(Wrappers.<SysOrg>lambdaQuery()
+                .eq(SysOrg::getStatus, "ENABLED")
+                .orderByAsc(SysOrg::getSort)
+                .orderByAsc(SysOrg::getId));
+        List<RegisterOrgOptionVO> options = new ArrayList<>();
+        flattenRegisterOptions(buildTree(orgs), 0, options);
+        return options;
+    }
+
+    private static void flattenRegisterOptions(List<OrgTreeVO> nodes, int depth,
+                                               List<RegisterOrgOptionVO> out) {
+        for (OrgTreeVO node : nodes) {
+            String indent = " ".repeat(Math.max(0, depth * 2));
+            out.add(new RegisterOrgOptionVO(node.getId(), indent + node.getName()));
+            if (node.getChildren() != null && !node.getChildren().isEmpty()) {
+                flattenRegisterOptions(node.getChildren(), depth + 1, out);
+            }
+        }
     }
 
     public SysOrg get(Long id) {

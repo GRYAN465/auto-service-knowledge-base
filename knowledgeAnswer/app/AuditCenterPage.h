@@ -1,5 +1,7 @@
 #pragma once
 
+#include "app/RefreshablePage.h"
+
 #include <QJsonObject>
 #include <QWidget>
 
@@ -14,11 +16,13 @@ namespace kb {
  * 审核中心（模块 4，路由 audit）：列出待审核（PENDING_AUDIT）知识，
  * 选中后右侧预览正文，可「通过 / 驳回（填意见）」。需 knowledge:article:audit。
  */
-class AuditCenterPage : public QWidget {
+class AuditCenterPage : public QWidget, public RefreshablePage {
     Q_OBJECT
 
 public:
     explicit AuditCenterPage(const QString &title, QWidget *parent = nullptr);
+
+    void refreshPage() override;
 
 private:
     void buildUi();

@@ -42,14 +42,14 @@ public class AttachmentController {
 
     @Operation(summary = "附件列表")
     @GetMapping
-    @PreAuthorize("hasAuthority('knowledge:article:list')")
+    @PreAuthorize("isAuthenticated()")
     public Result<List<KbAttachment>> list(@RequestParam Long articleId) {
         return Result.ok(attachmentService.list(articleId));
     }
 
     @Operation(summary = "下载附件")
     @GetMapping("/{id}/download")
-    @PreAuthorize("hasAuthority('knowledge:article:list')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Resource> download(@PathVariable Long id) {
         KbAttachment attachment = attachmentService.get(id);
         Resource resource = attachmentService.loadForDownload(attachment);

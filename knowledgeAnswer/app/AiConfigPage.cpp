@@ -34,6 +34,12 @@ AiConfigPage::AiConfigPage(const QString &title, QWidget *parent) : QWidget(pare
     loadConfig();
 }
 
+void AiConfigPage::refreshPage() {
+    if (m_baseUrl) {
+        loadConfig();
+    }
+}
+
 void AiConfigPage::buildUi() {
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(24, 20, 24, 24);
@@ -257,7 +263,7 @@ void AiConfigPage::setStatus(QLabel *label, const QString &text, int level) {
         return;
     }
     label->setText(text);
-    const char *color = level == 1 ? "#16A34A" : (level == 2 ? "#DC2626" : "#6B7280");
+    const char *color = level == 1 ? "#6B7F74" : (level == 2 ? "#B94A48" : "#757575");
     label->setStyleSheet(QStringLiteral("color:%1;").arg(color));
     if (level == 2 && !text.isEmpty()) {
         notify::warn(this, text);

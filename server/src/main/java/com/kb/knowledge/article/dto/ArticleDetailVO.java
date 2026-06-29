@@ -23,6 +23,7 @@ public class ArticleDetailVO {
     private String source;
     private Long authorId;
     private String authorName;
+    private String authorUsername;
     private Integer currentVersion;
     private LocalDateTime onlineTime;
     private LocalDateTime offlineTime;

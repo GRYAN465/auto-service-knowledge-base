@@ -1,10 +1,13 @@
 #include "app/AuditCenterPage.h"
 
+#include "app/RefreshablePage.h"
+#include "common/TableStyle.h"
 #include "core/auth/Session.h"
 #include "core/network/ApiClient.h"
 #include "core/notify/Notify.h"
 
 #include <QAbstractItemView>
+#include <QFrame>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QInputDialog>
@@ -31,55 +34,58 @@ void AuditCenterPage::buildUi() {
     root->setContentsMargins(24, 20, 24, 24);
     root->setSpacing(14);
 
-    auto *toolbar = new QHBoxLayout();
-    m_pass = new QPushButton(QStringLiteral("通过"), this);
-    m_reject = new QPushButton(QStringLiteral("驳回"), this);
-    auto *refreshButton = new QPushButton(QStringLiteral("刷新"), this);
-    m_pass->setObjectName("PrimaryButton");
-    m_reject->setObjectName("GhostButton");
-    refreshButton->setObjectName("GhostButton");
-    toolbar->addWidget(m_pass);
-    toolbar->addWidget(m_reject);
-    toolbar->addStretch();
-    toolbar->addWidget(refreshButton);
-    root->addLayout(toolbar);
-
-    const bool canAudit = Session::instance().hasPermission(QStringLiteral("knowledge:article:audit"));
-    m_pass->setEnabled(canAudit);
-    m_reject->setEnabled(canAudit);
-    connect(refreshButton, &QPushButton::clicked, this, &AuditCenterPage::refresh);
-    connect(m_pass, &QPushButton::clicked, this, &AuditCenterPage::pass);
-    connect(m_reject, &QPushButton::clicked, this, &AuditCenterPage::reject);
-
     m_status = new QLabel(this);
     m_status->setObjectName("StatusLabel");
     root->addWidget(m_status);
 
     auto *splitter = new QSplitter(Qt::Horizontal, this);
     m_table = new QTableWidget(splitter);
-    m_table->setObjectName("DataTable");
     m_table->setColumnCount(4);
     m_table->setHorizontalHeaderLabels({QStringLiteral("标题"), QStringLiteral("类型"),
                                         QStringLiteral("作者"), QStringLiteral("更新时间")});
-    m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
-    m_table->setSelectionMode(QAbstractItemView::SingleSelection);
-    m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    m_table->setAlternatingRowColors(true);
-    m_table->verticalHeader()->setVisible(false);
-    m_table->horizontalHeader()->setStretchLastSection(true);
-    m_table->setColumnWidth(0, 240);
+    TableStyle::configureTitleTable(m_table, 0);
     splitter->addWidget(m_table);
 
-    m_preview = new QTextEdit(splitter);
-    m_preview->setObjectName("DataTable");
+    auto *detailPanel = new QFrame(splitter);
+    detailPanel->setObjectName("SectionCard");
+    auto *detailLayout = new QVBoxLayout(detailPanel);
+    detailLayout->setContentsMargins(16, 16, 16, 16);
+    detailLayout->setSpacing(12);
+
+    m_preview = new QTextEdit(detailPanel);
+    m_preview->setObjectName("ArticleContent");
     m_preview->setReadOnly(true);
     m_preview->setPlaceholderText(QStringLiteral("选择左侧知识查看正文"));
-    splitter->addWidget(m_preview);
+    detailLayout->addWidget(m_preview, 1);
+
+    auto *actionBar = new QHBoxLayout();
+    actionBar->setSpacing(10);
+    m_pass = new QPushButton(QStringLiteral("通过"), detailPanel);
+    m_reject = new QPushButton(QStringLiteral("驳回"), detailPanel);
+    m_pass->setObjectName("PrimaryButton");
+    m_reject->setObjectName("GhostButton");
+    m_pass->setMinimumWidth(88);
+    m_reject->setMinimumWidth(88);
+    actionBar->addStretch();
+    actionBar->addWidget(m_pass);
+    actionBar->addWidget(m_reject);
+    detailLayout->addLayout(actionBar);
+
+    splitter->addWidget(detailPanel);
     splitter->setStretchFactor(0, 3);
     splitter->setStretchFactor(1, 2);
     root->addWidget(splitter, 1);
 
+    const bool canAudit = Session::instance().hasPermission(QStringLiteral("knowledge:article:audit"));
+    m_pass->setEnabled(canAudit);
+    m_reject->setEnabled(canAudit);
+    connect(m_pass, &QPushButton::clicked, this, &AuditCenterPage::pass);
+    connect(m_reject, &QPushButton::clicked, this, &AuditCenterPage::reject);
     connect(m_table, &QTableWidget::itemSelectionChanged, this, &AuditCenterPage::previewSelected);
+}
+
+void AuditCenterPage::refreshPage() {
+    refresh();
 }
 
 void AuditCenterPage::refresh() {
@@ -105,6 +111,7 @@ void AuditCenterPage::refresh() {
             m_table->setItem(row, 2, new QTableWidgetItem(o.value("authorName").toString()));
             m_table->setItem(row, 3, new QTableWidgetItem(o.value("updateTime").toString().replace('T', ' ')));
         }
+        TableStyle::setItemTooltipFromText(m_table);
         setStatus(QStringLiteral("待审核 %1 条").arg(static_cast<qint64>(d.value("total").toDouble())));
     });
 }
@@ -112,6 +119,7 @@ void AuditCenterPage::refresh() {
 void AuditCenterPage::previewSelected() {
     const qint64 id = selectedId();
     if (id <= 0) {
+        m_preview->clear();
         return;
     }
     ApiClient::instance().get("/knowledge/article/" + QString::number(id), [this](const ApiResponse &r) {
@@ -122,7 +130,7 @@ void AuditCenterPage::previewSelected() {
         QString html = QStringLiteral("<h3>%1</h3>").arg(d.value("title").toString().toHtmlEscaped());
         const QString summary = d.value("summary").toString();
         if (!summary.isEmpty()) {
-            html += QStringLiteral("<p style='color:#6B7280'>%1</p><hr>").arg(summary.toHtmlEscaped());
+            html += QStringLiteral("<p style='color:#757575'>%1</p><hr>").arg(summary.toHtmlEscaped());
         }
         html += d.value("content").toString();
         m_preview->setHtml(html);
@@ -190,7 +198,7 @@ QString AuditCenterPage::selectedTitle() const {
 
 void AuditCenterPage::setStatus(const QString &text, bool error) {
     m_status->setText(text);
-    m_status->setStyleSheet(error ? "color:#DC2626;" : "color:#6B7280;");
+    m_status->setStyleSheet(error ? "color:#B94A48;" : "color:#757575;");
     if (error && !text.isEmpty()) {
         notify::warn(this, text);
     }

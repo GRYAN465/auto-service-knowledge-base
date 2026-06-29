@@ -1,5 +1,7 @@
 #include "app/KnowledgeBasePage.h"
 
+#include "app/RefreshablePage.h"
+#include "common/TableStyle.h"
 #include "core/auth/Session.h"
 #include "core/network/ApiClient.h"
 #include "core/notify/Notify.h"
@@ -40,16 +42,33 @@ QString textOf(const QJsonObject &o, const QString &key) {
     return v.toString();
 }
 
-QTableWidget *makeTable(QWidget *parent) {
-    auto *table = new QTableWidget(parent);
-    table->setObjectName("DataTable");
-    table->setSelectionBehavior(QAbstractItemView::SelectRows);
-    table->setSelectionMode(QAbstractItemView::SingleSelection);
-    table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    table->setAlternatingRowColors(true);
-    table->verticalHeader()->setVisible(false);
-    table->horizontalHeader()->setStretchLastSection(true);
-    return table;
+void styleTagColorPreview(QFrame *preview, const QString &hex) {
+    preview->setObjectName(QStringLiteral("TagColorPreview"));
+    const QColor c(hex);
+    if (c.isValid()) {
+        preview->setStyleSheet(QStringLiteral(
+            "QFrame#TagColorPreview { background-color: %1; border: 1px solid #E0D9CE; border-radius: 6px; }")
+                                   .arg(c.name(QColor::HexRgb)));
+    } else {
+        preview->setStyleSheet(QStringLiteral(
+            "QFrame#TagColorPreview { background-color: #FEFEFE; border: 1px dashed #E0D9CE; border-radius: 6px; }"));
+    }
+}
+
+QWidget *makeTagColorCell(const QString &hex, QWidget *parent) {
+    auto *cell = new QWidget(parent);
+    auto *layout = new QHBoxLayout(cell);
+    layout->setContentsMargins(4, 2, 8, 2);
+    layout->setSpacing(10);
+    auto *preview = new QFrame(cell);
+    preview->setFixedSize(28, 28);
+    styleTagColorPreview(preview, hex);
+    auto *text = new QLabel(hex.isEmpty() ? QStringLiteral("—") : hex, cell);
+    text->setObjectName(QStringLiteral("MutedLabel"));
+    text->setMinimumWidth(72);
+    layout->addWidget(preview);
+    layout->addWidget(text, 1);
+    return cell;
 }
 
 QLineEdit *line(QFormLayout *form, const QString &label, const QString &value = QString()) {
@@ -121,7 +140,7 @@ bool runTagDialog(QWidget *parent, const QString &title, const QJsonObject &init
     colorEdit->setPlaceholderText(QStringLiteral("#RRGGBB"));
     auto *swatch = new QFrame();
     swatch->setFixedSize(28, 28);
-    swatch->setFrameShape(QFrame::StyledPanel);
+    swatch->setFrameShape(QFrame::NoFrame);
     auto *pick = new QPushButton(QStringLiteral("取色..."));
     pick->setObjectName("GhostButton");
     colorLayout->addWidget(colorEdit, 1);
@@ -130,19 +149,13 @@ bool runTagDialog(QWidget *parent, const QString &title, const QJsonObject &init
     form->addRow(QStringLiteral("颜色"), colorRow);
 
     auto applySwatch = [swatch](const QString &hex) {
-        QColor c(hex.trimmed());
-        if (c.isValid()) {
-            swatch->setStyleSheet(QStringLiteral("background:%1;border:1px solid #D8DCE2;border-radius:4px;")
-                                      .arg(c.name()));
-        } else {
-            swatch->setStyleSheet(QStringLiteral("background:#FFFFFF;border:1px dashed #D8DCE2;border-radius:4px;"));
-        }
+        styleTagColorPreview(swatch, hex);
     };
     applySwatch(colorEdit->text());
     QObject::connect(colorEdit, &QLineEdit::textChanged, swatch, applySwatch);
     QObject::connect(pick, &QPushButton::clicked, &dlg, [&dlg, colorEdit]() {
         QColor init(colorEdit->text().trimmed());
-        QColor c = QColorDialog::getColor(init.isValid() ? init : QColor("#2563EB"), &dlg,
+        QColor c = QColorDialog::getColor(init.isValid() ? init : QColor("#9AA69D"), &dlg,
                                           QStringLiteral("选择标签颜色"));
         if (c.isValid()) {
             colorEdit->setText(c.name().toUpper());
@@ -186,9 +199,21 @@ void KnowledgeBasePage::buildUi() {
     root->setSpacing(14);
 
     auto *tabs = new QTabWidget(this);
+    m_tabs = tabs;
     tabs->addTab(buildCategoryTab(), QStringLiteral("分类"));
     tabs->addTab(buildTagTab(), QStringLiteral("标签"));
     root->addWidget(tabs, 1);
+}
+
+void KnowledgeBasePage::refreshPage() {
+    if (!m_tabs) {
+        return;
+    }
+    if (m_tabs->currentIndex() == 0) {
+        refreshCategories();
+    } else {
+        refreshTags();
+    }
 }
 
 QWidget *KnowledgeBasePage::buildCategoryTab() {
@@ -202,9 +227,8 @@ QWidget *KnowledgeBasePage::buildCategoryTab() {
     m_catAddChild = new QPushButton(QStringLiteral("新增子"), page);
     m_catEdit = new QPushButton(QStringLiteral("编辑"), page);
     m_catDelete = new QPushButton(QStringLiteral("删除"), page);
-    auto *refreshButton = new QPushButton(QStringLiteral("刷新"), page);
     m_catAddRoot->setObjectName("PrimaryButton");
-    for (QPushButton *button : {m_catAddChild, m_catEdit, m_catDelete, refreshButton}) {
+    for (QPushButton *button : {m_catAddChild, m_catEdit, m_catDelete}) {
         button->setObjectName("GhostButton");
     }
     toolbar->addWidget(m_catAddRoot);
@@ -212,7 +236,6 @@ QWidget *KnowledgeBasePage::buildCategoryTab() {
     toolbar->addWidget(m_catEdit);
     toolbar->addWidget(m_catDelete);
     toolbar->addStretch();
-    toolbar->addWidget(refreshButton);
     layout->addLayout(toolbar);
 
     m_catStatus = new QLabel(page);
@@ -220,14 +243,10 @@ QWidget *KnowledgeBasePage::buildCategoryTab() {
     layout->addWidget(m_catStatus);
 
     m_catTree = new QTreeWidget(page);
-    m_catTree->setObjectName("DataTable");
     m_catTree->setColumnCount(4);
     m_catTree->setHeaderLabels({QStringLiteral("名称"), QStringLiteral("编码"),
                                 QStringLiteral("排序"), QStringLiteral("状态")});
-    m_catTree->setRootIsDecorated(true);
-    m_catTree->setSelectionMode(QAbstractItemView::SingleSelection);
-    m_catTree->header()->setStretchLastSection(true);
-    m_catTree->setColumnWidth(0, 280);
+    TableStyle::configureCategoryTree(m_catTree);
     layout->addWidget(m_catTree, 1);
 
     const bool canCreate = Session::instance().hasPermission(QStringLiteral("knowledge:category:create"));
@@ -236,7 +255,6 @@ QWidget *KnowledgeBasePage::buildCategoryTab() {
     m_catEdit->setEnabled(Session::instance().hasPermission(QStringLiteral("knowledge:category:update")));
     m_catDelete->setEnabled(Session::instance().hasPermission(QStringLiteral("knowledge:category:delete")));
 
-    connect(refreshButton, &QPushButton::clicked, this, &KnowledgeBasePage::refreshCategories);
     connect(m_catAddRoot, &QPushButton::clicked, this, [this]() { addCategory(false); });
     connect(m_catAddChild, &QPushButton::clicked, this, [this]() { addCategory(true); });
     connect(m_catEdit, &QPushButton::clicked, this, &KnowledgeBasePage::editCategory);
@@ -254,30 +272,31 @@ QWidget *KnowledgeBasePage::buildTagTab() {
     m_tagAdd = new QPushButton(QStringLiteral("新增"), page);
     m_tagEdit = new QPushButton(QStringLiteral("编辑"), page);
     m_tagDelete = new QPushButton(QStringLiteral("删除"), page);
-    auto *refreshButton = new QPushButton(QStringLiteral("刷新"), page);
     m_tagAdd->setObjectName("PrimaryButton");
-    for (QPushButton *button : {m_tagEdit, m_tagDelete, refreshButton}) {
+    for (QPushButton *button : {m_tagEdit, m_tagDelete}) {
         button->setObjectName("GhostButton");
     }
     toolbar->addWidget(m_tagAdd);
     toolbar->addWidget(m_tagEdit);
     toolbar->addWidget(m_tagDelete);
     toolbar->addStretch();
-    toolbar->addWidget(refreshButton);
     layout->addLayout(toolbar);
 
     m_tagStatus = new QLabel(page);
     m_tagStatus->setObjectName("StatusLabel");
     layout->addWidget(m_tagStatus);
 
-    m_tagTable = makeTable(page);
+    m_tagTable = new QTableWidget(page);
+    m_tagTable->setColumnCount(3);
+    m_tagTable->setHorizontalHeaderLabels({QStringLiteral("名称"), QStringLiteral("颜色"),
+                                           QStringLiteral("排序")});
+    TableStyle::configureTagTable(m_tagTable);
     layout->addWidget(m_tagTable, 1);
 
     m_tagAdd->setEnabled(Session::instance().hasPermission(QStringLiteral("knowledge:tag:create")));
     m_tagEdit->setEnabled(Session::instance().hasPermission(QStringLiteral("knowledge:tag:update")));
     m_tagDelete->setEnabled(Session::instance().hasPermission(QStringLiteral("knowledge:tag:delete")));
 
-    connect(refreshButton, &QPushButton::clicked, this, &KnowledgeBasePage::refreshTags);
     connect(m_tagAdd, &QPushButton::clicked, this, &KnowledgeBasePage::addTag);
     connect(m_tagEdit, &QPushButton::clicked, this, &KnowledgeBasePage::editTag);
     connect(m_tagDelete, &QPushButton::clicked, this, &KnowledgeBasePage::deleteTag);
@@ -294,6 +313,7 @@ void KnowledgeBasePage::refreshCategories() {
         m_catTree->clear();
         appendCategoryNodes(nullptr, r.data.toArray());
         m_catTree->expandAll();
+        TableStyle::setTreeItemTooltipFromText(m_catTree);
         setCatStatus(QStringLiteral("分类已加载"));
     });
 }
@@ -404,6 +424,7 @@ void KnowledgeBasePage::refreshTags() {
         m_tagTable->setColumnCount(3);
         m_tagTable->setHorizontalHeaderLabels({QStringLiteral("名称"), QStringLiteral("颜色"),
                                                QStringLiteral("排序")});
+        TableStyle::configureTagTable(m_tagTable);
         m_tagTable->setRowCount(0);
         for (const QJsonValue &v : list) {
             const QJsonObject o = v.toObject();
@@ -415,17 +436,11 @@ void KnowledgeBasePage::refreshTags() {
             m_tagTable->setItem(row, 0, nameItem);
 
             const QString hex = o.value("color").toString();
-            auto *colorItem = new QTableWidgetItem(hex);
-            QColor c(hex);
-            if (c.isValid()) {
-                colorItem->setBackground(c);
-                colorItem->setForeground(c.lightness() < 140 ? QColor("#FFFFFF") : QColor("#111827"));
-            }
-            m_tagTable->setItem(row, 1, colorItem);
+            m_tagTable->setCellWidget(row, 1, makeTagColorCell(hex, m_tagTable));
 
             m_tagTable->setItem(row, 2, new QTableWidgetItem(textOf(o, "sort")));
         }
-        m_tagTable->resizeColumnsToContents();
+        TableStyle::setItemTooltipFromText(m_tagTable);
         setTagStatus(QStringLiteral("已加载 %1 个标签").arg(list.size()));
     });
 }
@@ -513,7 +528,7 @@ void KnowledgeBasePage::setCatStatus(const QString &text, bool error) {
         return;
     }
     m_catStatus->setText(text);
-    m_catStatus->setStyleSheet(error ? "color:#DC2626;" : "color:#6B7280;");
+    m_catStatus->setStyleSheet(error ? "color:#B94A48;" : "color:#757575;");
     if (error && !text.isEmpty()) {
         notify::warn(this, text);
     }
@@ -524,7 +539,7 @@ void KnowledgeBasePage::setTagStatus(const QString &text, bool error) {
         return;
     }
     m_tagStatus->setText(text);
-    m_tagStatus->setStyleSheet(error ? "color:#DC2626;" : "color:#6B7280;");
+    m_tagStatus->setStyleSheet(error ? "color:#B94A48;" : "color:#757575;");
     if (error && !text.isEmpty()) {
         notify::warn(this, text);
     }

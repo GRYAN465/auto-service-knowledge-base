@@ -30,4 +30,6 @@ public class SysUser extends BaseEntity {
     private LocalDateTime lastLoginTime;
     private String lastLoginIp;
     private String remark;
+    /** 收藏隐私：0 公开，1 仅自己可见。 */
+    private Integer favoritePrivate;
 }

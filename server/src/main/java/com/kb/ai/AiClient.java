@@ -7,6 +7,8 @@ import com.kb.ai.dto.AiLlmTestRequest;
 import com.kb.ai.dto.AiLlmTestResponse;
 import com.kb.ai.dto.AiQaRequest;
 import com.kb.ai.dto.AiQaResponse;
+import com.kb.ai.dto.AiRecommendMatchRequest;
+import com.kb.ai.dto.AiRecommendMatchResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -17,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 调用 Python ai-service（FastAPI）的出站 HTTP 客户端：向量化入库 / 移除 / 检索增强问答。
+ * 调用 Python ai-service（FastAPI）的出站 HTTP 客户端：向量化入库 / 移除 / 检索增强问答 / 首页推荐匹配。
  * 用 Spring Boot 自带 {@link RestClient}（无需额外依赖）；读超时放宽以容 LLM 延迟。
  *
  * <p>请求/响应 DTO 用 {@code @JsonProperty} 显式映射 snake_case，独立于本项目 Jackson 默认（camelCase），
@@ -96,5 +98,15 @@ public class AiClient {
                 .body(new AiLlmTestRequest(baseUrl, apiKey, model, temperature, maxTokens))
                 .retrieve()
                 .body(AiLlmTestResponse.class);
+    }
+
+    /** 首页推荐：用户画像 vs 标签/文章向量相似度。 */
+    public AiRecommendMatchResponse recommendMatch(AiRecommendMatchRequest request) {
+        return restClient.post()
+                .uri("/ai/recommend/match")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request)
+                .retrieve()
+                .body(AiRecommendMatchResponse.class);
     }
 }

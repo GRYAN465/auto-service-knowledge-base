@@ -34,6 +34,13 @@ public class TagService {
         return PageResult.of(data);
     }
 
+    /** 全量标签选项（社区 pin 用），按 sort 升序。 */
+    public java.util.List<KbTag> listOptions() {
+        return tagMapper.selectList(Wrappers.<KbTag>lambdaQuery()
+                .orderByAsc(KbTag::getSort)
+                .orderByAsc(KbTag::getId));
+    }
+
     public KbTag get(Long id) {
         KbTag tag = tagMapper.selectById(id);
         if (tag == null) {

@@ -1,66 +1,125 @@
 #include "app/StatisticsPage.h"
 
-#include "app/ArticleDetailDialog.h"
-#include "core/auth/Session.h"
+#include "app/RefreshablePage.h"
+#include "common/ChartCard.h"
+#include "common/ChartTheme.h"
+#include "common/ComboStyle.h"
 #include "core/network/ApiClient.h"
 #include "core/notify/Notify.h"
 
-#include <QAbstractItemView>
+#include <QChart>
 #include <QComboBox>
 #include <QFrame>
 #include <QGridLayout>
 #include <QHBoxLayout>
-#include <QHeaderView>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QLabel>
-#include <QPushButton>
-#include <QTableWidget>
+#include <QDate>
+#include <QtMath>
+#include <QScrollArea>
 #include <QVBoxLayout>
 
 namespace kb {
 
 namespace {
 
-QString typeLabel(const QString &code) {
-    if (code == "SCRIPT") return QStringLiteral("话术");
-    if (code == "TRAIN") return QStringLiteral("培训");
-    if (code == "PRODUCT") return QStringLiteral("产品");
-    if (code == "OFFICE") return QStringLiteral("办公");
-    return code.isEmpty() ? QStringLiteral("未分类") : code;
-}
-
 qint64 asLong(const QJsonValue &v) {
     return static_cast<qint64>(v.toDouble());
 }
 
-// 构建一张指标卡：白底圆角，大号数值在上、灰色说明在下。数值标签由 valueLabel 带出供刷新更新。
-QFrame *makeCard(const QString &caption, QLabel *&valueLabel, QWidget *parent) {
-    auto *card = new QFrame(parent);
-    card->setObjectName("StatCard");
-    auto *lay = new QVBoxLayout(card);
-    lay->setContentsMargins(16, 14, 16, 14);
-    lay->setSpacing(6);
-    valueLabel = new QLabel(QStringLiteral("—"), card);
-    valueLabel->setObjectName("StatCardValue");
-    auto *cap = new QLabel(caption, card);
-    cap->setObjectName("StatCardLabel");
-    lay->addWidget(valueLabel);
-    lay->addWidget(cap);
-    return card;
+QString truncateLabel(const QString &text, int maxLen = 14) {
+    const QString t = text.trimmed();
+    if (t.length() <= maxLen) {
+        return t;
+    }
+    return t.left(maxLen) + QStringLiteral("…");
 }
 
-void setupTable(QTableWidget *table, const QStringList &headers) {
-    table->setObjectName("DataTable");
-    table->setColumnCount(headers.size());
-    table->setHorizontalHeaderLabels(headers);
-    table->setSelectionBehavior(QAbstractItemView::SelectRows);
-    table->setSelectionMode(QAbstractItemView::SingleSelection);
-    table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    table->setAlternatingRowColors(true);
-    table->verticalHeader()->setVisible(false);
-    table->horizontalHeader()->setStretchLastSection(true);
+QStringList datesFromTrend(const QJsonArray &arr, bool monthly) {
+    QStringList out;
+    for (const QJsonValue &v : arr) {
+        const QString d = v.toObject().value("date").toString();
+        if (monthly && d.length() >= 7) {
+            const int month = d.mid(5, 2).toInt();
+            out << QStringLiteral("%1月").arg(month);
+        } else if (d.length() >= 10) {
+            out << d.mid(5);
+        } else {
+            out << d;
+        }
+    }
+    return out;
+}
+
+QVector<qint64> countsFromTrend(const QJsonArray &arr) {
+    QVector<qint64> out;
+    out.reserve(arr.size());
+    for (const QJsonValue &v : arr) {
+        out << asLong(v.toObject().value("count"));
+    }
+    return out;
+}
+
+QFrame *makeKpiTile(const QString &caption, QLabel *&valueOut, QWidget *parent, bool accent = false) {
+    auto *tile = new QFrame(parent);
+    tile->setObjectName(QStringLiteral("KpiTile"));
+    auto *lay = new QVBoxLayout(tile);
+    lay->setContentsMargins(14, 12, 14, 12);
+    lay->setSpacing(4);
+    valueOut = new QLabel(QStringLiteral("—"), tile);
+    valueOut->setObjectName(accent ? QStringLiteral("KpiTileValueAccent") : QStringLiteral("KpiTileValue"));
+    auto *cap = new QLabel(caption, tile);
+    cap->setObjectName(QStringLiteral("KpiTileLabel"));
+    lay->addWidget(valueOut);
+    lay->addWidget(cap);
+    return tile;
+}
+
+QFrame *makeKpiSection(QWidget *parent, OverviewKpiLabels &kpi, QHBoxLayout *titleRight) {
+    auto *section = new QFrame(parent);
+    section->setObjectName("SectionCard");
+    auto *layout = new QVBoxLayout(section);
+    layout->setContentsMargins(20, 18, 20, 16);
+    layout->setSpacing(12);
+    auto *titleRow = new QHBoxLayout();
+    titleRow->setSpacing(8);
+    auto *title = new QLabel(QStringLiteral("运营总览"), section);
+    title->setObjectName("SectionTitle");
+    titleRow->addWidget(title);
+    titleRow->addStretch();
+    if (titleRight) {
+        while (QLayoutItem *item = titleRight->takeAt(0)) {
+            titleRow->addItem(item);
+        }
+        delete titleRight;
+    }
+    layout->addLayout(titleRow);
+
+    auto *grid = new QGridLayout();
+    grid->setContentsMargins(0, 0, 0, 0);
+    grid->setHorizontalSpacing(10);
+    grid->setVerticalSpacing(10);
+
+    grid->addWidget(makeKpiTile(QStringLiteral("知识总数"), kpi.articleTotal, section), 0, 0);
+    grid->addWidget(makeKpiTile(QStringLiteral("已上线"), kpi.articleOnline, section, true), 0, 1);
+    grid->addWidget(makeKpiTile(QStringLiteral("待审核"), kpi.articlePending, section), 0, 2);
+    grid->addWidget(makeKpiTile(QStringLiteral("草稿"), kpi.articleDraft, section), 0, 3);
+    grid->addWidget(makeKpiTile(QStringLiteral("已下线"), kpi.articleOffline, section), 0, 4);
+    grid->addWidget(makeKpiTile(QStringLiteral("累计浏览"), kpi.viewTotal, section), 1, 0);
+    grid->addWidget(makeKpiTile(QStringLiteral("累计收藏"), kpi.favoriteTotal, section), 1, 1);
+    grid->addWidget(makeKpiTile(QStringLiteral("累计点赞"), kpi.likeTotal, section), 1, 2);
+    grid->addWidget(makeKpiTile(QStringLiteral("累计评论"), kpi.commentTotal, section), 1, 3);
+    grid->addWidget(makeKpiTile(QStringLiteral("分类 / 标签"), kpi.categoryTag, section), 1, 4);
+
+    layout->addLayout(grid);
+
+    kpi.today = new QLabel(section);
+    kpi.today->setObjectName(QStringLiteral("KpiTodayStrip"));
+    kpi.today->setTextFormat(Qt::RichText);
+    layout->addWidget(kpi.today);
+    return section;
 }
 
 } // namespace
@@ -72,98 +131,161 @@ StatisticsPage::StatisticsPage(const QString &title, QWidget *parent)
 }
 
 void StatisticsPage::buildUi() {
-    auto *root = new QVBoxLayout(this);
-    root->setContentsMargins(24, 20, 24, 24);
-    root->setSpacing(14);
+    auto *outer = new QVBoxLayout(this);
+    outer->setContentsMargins(0, 0, 0, 0);
+    outer->setSpacing(0);
 
-    // 工具栏：刷新 + 状态
-    auto *toolbar = new QHBoxLayout();
-    auto *refreshBtn = new QPushButton(QStringLiteral("刷新"), this);
-    refreshBtn->setObjectName("GhostButton");
-    connect(refreshBtn, &QPushButton::clicked, this, &StatisticsPage::refresh);
-    m_status = new QLabel(this);
-    m_status->setObjectName("StatusLabel");
-    toolbar->addWidget(refreshBtn);
-    toolbar->addSpacing(12);
-    toolbar->addWidget(m_status);
-    toolbar->addStretch();
-    root->addLayout(toolbar);
+    auto *scroll = new QScrollArea(this);
+    scroll->setWidgetResizable(true);
+    scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-    // 指标卡：2 行 × 4 列
-    auto *grid = new QGridLayout();
-    grid->setSpacing(12);
-    grid->addWidget(makeCard(QStringLiteral("知识总数"), m_cardArticleTotal, this), 0, 0);
-    grid->addWidget(makeCard(QStringLiteral("已上线"), m_cardOnline, this), 0, 1);
-    grid->addWidget(makeCard(QStringLiteral("待审核"), m_cardPending, this), 0, 2);
-    grid->addWidget(makeCard(QStringLiteral("草稿"), m_cardDraft, this), 0, 3);
-    grid->addWidget(makeCard(QStringLiteral("累计浏览"), m_cardViews, this), 1, 0);
-    grid->addWidget(makeCard(QStringLiteral("累计收藏"), m_cardFavorites, this), 1, 1);
-    grid->addWidget(makeCard(QStringLiteral("累计点赞"), m_cardLikes, this), 1, 2);
-    grid->addWidget(makeCard(QStringLiteral("累计评论"), m_cardComments, this), 1, 3);
-    for (int c = 0; c < 4; ++c) {
-        grid->setColumnStretch(c, 1);
+    auto *content = new QWidget(scroll);
+    auto *root = new QVBoxLayout(content);
+    root->setContentsMargins(24, 16, 24, 28);
+    root->setSpacing(16);
+
+    m_periodWindow = new QComboBox(content);
+    m_periodWindow->addItem(QStringLiteral("近 7 天"), 7);
+    m_periodWindow->addItem(QStringLiteral("近 30 天"), 30);
+    m_periodWindow->addItem(QStringLiteral("近 90 天"), 90);
+    m_periodWindow->addItem(QStringLiteral("按年"), -1);
+    m_periodWindow->setCurrentIndex(0);
+    ComboStyle::polish(m_periodWindow);
+
+    m_yearLabel = new QLabel(QStringLiteral("年份"), content);
+    m_yearWindow = new QComboBox(content);
+    const int curYear = QDate::currentDate().year();
+    for (int y = curYear; y >= curYear - 3; --y) {
+        m_yearWindow->addItem(QString::number(y), y);
     }
-    root->addLayout(grid);
+    ComboStyle::polish(m_yearWindow);
 
-    // 说明行：今日动态 / 规模与类型分布
-    m_todayLine = new QLabel(this);
-    m_todayLine->setObjectName("MutedLine");
-    m_scaleLine = new QLabel(this);
-    m_scaleLine->setObjectName("MutedLine");
-    m_scaleLine->setWordWrap(true);
-    root->addWidget(m_todayLine);
-    root->addWidget(m_scaleLine);
+    connect(m_periodWindow, &QComboBox::currentIndexChanged, this, [this]() {
+        updatePeriodControls();
+        loadTrend();
+        loadHotKeywords();
+        loadQaOverview();
+    });
+    connect(m_yearWindow, &QComboBox::currentIndexChanged, this, [this]() {
+        if (isMonthlyTrend()) {
+            loadTrend();
+        }
+    });
 
-    // 两块榜单并排：热门知识（宽）/ 热门搜索词（窄）
-    auto *panels = new QHBoxLayout();
-    panels->setSpacing(16);
+    auto *periodBar = new QHBoxLayout();
+    periodBar->setSpacing(8);
+    auto *periodLabel = new QLabel(QStringLiteral("统计周期"), content);
+    periodLabel->setObjectName(QStringLiteral("MutedLabel"));
+    periodBar->addWidget(periodLabel);
+    periodBar->addWidget(m_periodWindow);
+    periodBar->addWidget(m_yearLabel);
+    periodBar->addWidget(m_yearWindow);
 
-    auto *leftBox = new QVBoxLayout();
-    leftBox->setSpacing(8);
-    auto *hotTitle = new QLabel(QStringLiteral("热门知识 · 浏览量 TOP 10"), this);
-    hotTitle->setObjectName("SectionTitle");
-    m_hotArticles = new QTableWidget(this);
-    setupTable(m_hotArticles, {QStringLiteral("#"), QStringLiteral("标题"), QStringLiteral("分类"),
-                               QStringLiteral("类型"), QStringLiteral("浏览"), QStringLiteral("收藏"),
-                               QStringLiteral("评论")});
-    m_hotArticles->setColumnWidth(0, 40);
-    m_hotArticles->setColumnWidth(1, 260);
-    connect(m_hotArticles, &QTableWidget::doubleClicked, this, &StatisticsPage::openArticleDetail);
-    leftBox->addWidget(hotTitle);
-    leftBox->addWidget(m_hotArticles, 1);
+    m_kpiSection = makeKpiSection(content, m_kpi, periodBar);
+    root->addWidget(m_kpiSection);
+    updatePeriodControls();
 
-    auto *rightBox = new QVBoxLayout();
-    rightBox->setSpacing(8);
-    auto *kwHeader = new QHBoxLayout();
-    auto *kwTitle = new QLabel(QStringLiteral("热门搜索词"), this);
-    kwTitle->setObjectName("SectionTitle");
-    m_keywordWindow = new QComboBox(this);
-    m_keywordWindow->addItem(QStringLiteral("近 7 天"), 7);
-    m_keywordWindow->addItem(QStringLiteral("近 30 天"), 30);
-    m_keywordWindow->addItem(QStringLiteral("近 90 天"), 90);
-    m_keywordWindow->addItem(QStringLiteral("全部"), 0);
-    m_keywordWindow->setCurrentIndex(1); // 默认近 30 天
-    connect(m_keywordWindow, &QComboBox::currentIndexChanged, this, [this]() { loadHotKeywords(); });
-    kwHeader->addWidget(kwTitle);
-    kwHeader->addStretch();
-    kwHeader->addWidget(m_keywordWindow);
-    m_hotKeywords = new QTableWidget(this);
-    setupTable(m_hotKeywords, {QStringLiteral("#"), QStringLiteral("搜索词"),
-                               QStringLiteral("次数"), QStringLiteral("无结果")});
-    m_hotKeywords->setColumnWidth(0, 40);
-    rightBox->addLayout(kwHeader);
-    rightBox->addWidget(m_hotKeywords, 1);
+    m_status = new QLabel(content);
+    m_status->setObjectName("StatusLabel");
+    m_status->setVisible(false);
+    root->addWidget(m_status);
 
-    panels->addLayout(leftBox, 3);
-    panels->addLayout(rightBox, 2);
-    root->addLayout(panels, 1);
+    m_activityChart = new ChartCard(QStringLiteral("平台活跃趋势"), 280, content);
+    m_activityChart->setLegendStyle(ChartLegendStyle::Bottom);
+    m_activityChart->setSubtitle(QStringLiteral("每日浏览量与检索次数"));
+    root->addWidget(m_activityChart);
+
+    m_contentChart = new ChartCard(QStringLiteral("内容生产趋势"), 280, content);
+    m_contentChart->setLegendStyle(ChartLegendStyle::Bottom);
+    m_contentChart->setSubtitle(QStringLiteral("每日新增知识与上线知识"));
+    root->addWidget(m_contentChart);
+
+    auto *distRow = new QHBoxLayout();
+    distRow->setSpacing(16);
+    m_statusPie = new ChartCard(QStringLiteral("知识状态分布"), 240, content);
+    m_statusPie->setLegendStyle(ChartLegendStyle::LeftVertical);
+    m_typePie = new ChartCard(QStringLiteral("知识类型分布"), 240, content);
+    m_typePie->setLegendStyle(ChartLegendStyle::LeftVertical);
+    distRow->addWidget(m_statusPie, 1);
+    distRow->addWidget(m_typePie, 1);
+    root->addLayout(distRow);
+
+    m_categoryChart = new ChartCard(QStringLiteral("分类知识量 TOP 10"), 340, content);
+    m_categoryChart->setSubtitle(QStringLiteral("各分类已收录知识数量（含各状态）"));
+    root->addWidget(m_categoryChart);
+
+    auto *rankRow = new QHBoxLayout();
+    rankRow->setSpacing(16);
+    m_hotArticleChart = new ChartCard(QStringLiteral("热门知识 · 浏览量 TOP 10"), 320, content);
+    m_hotKeywordChart = new ChartCard(QStringLiteral("热门搜索词 TOP 10"), 320, content);
+    m_hotKeywordChart->setSubtitle(QStringLiteral("柱高为检索次数；关注无结果词揭示内容缺口"));
+    rankRow->addWidget(m_hotArticleChart, 1);
+    rankRow->addWidget(m_hotKeywordChart, 1);
+    root->addLayout(rankRow);
+
+    auto *opsRow = new QHBoxLayout();
+    opsRow->setSpacing(16);
+    m_auditChart = new ChartCard(QStringLiteral("审核运营"), 240, content);
+    m_auditChart->setLegendStyle(ChartLegendStyle::LeftVertical);
+    m_qaChart = new ChartCard(QStringLiteral("智能问答运营"), 240, content);
+    m_qaChart->setLegendStyle(ChartLegendStyle::Bottom);
+    opsRow->addWidget(m_auditChart, 1);
+    opsRow->addWidget(m_qaChart, 1);
+    root->addLayout(opsRow);
+
+    root->addStretch();
+    scroll->setWidget(content);
+    outer->addWidget(scroll);
+}
+
+void StatisticsPage::refreshPage() {
+    refresh();
+}
+
+void StatisticsPage::updatePeriodControls() {
+    const bool monthly = isMonthlyTrend();
+    if (m_yearLabel) {
+        m_yearLabel->setVisible(monthly);
+    }
+    if (m_yearWindow) {
+        m_yearWindow->setVisible(monthly);
+    }
+    if (m_activityChart) {
+        m_activityChart->setSubtitle(monthly ? QStringLiteral("每月浏览量与检索次数")
+                                           : QStringLiteral("每日浏览量与检索次数"));
+    }
+    if (m_contentChart) {
+        m_contentChart->setSubtitle(monthly ? QStringLiteral("每月新增知识与上线知识")
+                                            : QStringLiteral("每日新增知识与上线知识"));
+    }
+}
+
+int StatisticsPage::trendDays() const {
+    if (!m_periodWindow) {
+        return 30;
+    }
+    const int v = m_periodWindow->currentData().toInt();
+    return v > 0 ? v : 90;
+}
+
+int StatisticsPage::trendYear() const {
+    return m_yearWindow ? m_yearWindow->currentData().toInt() : QDate::currentDate().year();
+}
+
+bool StatisticsPage::isMonthlyTrend() const {
+    return m_periodWindow && m_periodWindow->currentData().toInt() < 0;
 }
 
 void StatisticsPage::refresh() {
     setStatus(QStringLiteral("加载中..."));
     loadOverview();
+    loadTrend();
+    loadCategoryRank();
     loadHotArticles();
     loadHotKeywords();
+    loadAuditOverview();
+    loadQaOverview();
 }
 
 void StatisticsPage::loadOverview() {
@@ -173,37 +295,97 @@ void StatisticsPage::loadOverview() {
             return;
         }
         const QJsonObject o = r.object();
-        m_cardArticleTotal->setText(QString::number(asLong(o.value("articleTotal"))));
-        m_cardOnline->setText(QString::number(asLong(o.value("articleOnline"))));
-        m_cardPending->setText(QString::number(asLong(o.value("articlePendingAudit"))));
-        m_cardDraft->setText(QString::number(asLong(o.value("articleDraft"))));
-        m_cardViews->setText(QString::number(asLong(o.value("viewTotal"))));
-        m_cardFavorites->setText(QString::number(asLong(o.value("favoriteTotal"))));
-        m_cardLikes->setText(QString::number(asLong(o.value("likeTotal"))));
-        m_cardComments->setText(QString::number(asLong(o.value("commentTotal"))));
 
-        m_todayLine->setText(QStringLiteral("今日浏览 %1 · 今日检索 %2 · 今日新增知识 %3")
-                                 .arg(asLong(o.value("todayViews")))
-                                 .arg(asLong(o.value("todaySearches")))
-                                 .arg(asLong(o.value("todayNewArticles"))));
+        m_kpi.articleTotal->setText(QString::number(asLong(o.value("articleTotal"))));
+        m_kpi.articleOnline->setText(QString::number(asLong(o.value("articleOnline"))));
+        m_kpi.articlePending->setText(QString::number(asLong(o.value("articlePendingAudit"))));
+        m_kpi.articleDraft->setText(QString::number(asLong(o.value("articleDraft"))));
+        m_kpi.articleOffline->setText(QString::number(asLong(o.value("articleOffline"))));
+        m_kpi.viewTotal->setText(QString::number(asLong(o.value("viewTotal"))));
+        m_kpi.favoriteTotal->setText(QString::number(asLong(o.value("favoriteTotal"))));
+        m_kpi.likeTotal->setText(QString::number(asLong(o.value("likeTotal"))));
+        m_kpi.commentTotal->setText(QString::number(asLong(o.value("commentTotal"))));
+        m_kpi.categoryTag->setText(QStringLiteral("%1 / %2")
+                                       .arg(asLong(o.value("categoryCount")))
+                                       .arg(asLong(o.value("tagCount"))));
+        m_kpi.today->setText(
+            QStringLiteral("<span style='color:#757575'>今日</span> "
+                           "<span style='color:#4A4A4A'>浏览 <b>%1</b></span>"
+                           "<span style='color:#C8C4BC'> · </span>"
+                           "<span style='color:#4A4A4A'>检索 <b>%2</b></span>"
+                           "<span style='color:#C8C4BC'> · </span>"
+                           "<span style='color:#4A4A4A'>新增知识 <b>%3</b></span>")
+                .arg(asLong(o.value("todayViews")))
+                .arg(asLong(o.value("todaySearches")))
+                .arg(asLong(o.value("todayNewArticles"))));
 
-        // 类型分布拼接为一行
-        QStringList typeParts;
+        QVector<QPair<QString, qint64>> statusSlices;
+        for (const QJsonValue &v : o.value("statusDist").toArray()) {
+            const QJsonObject item = v.toObject();
+            statusSlices.append({ChartTheme::statusLabel(item.value("name").toString()),
+                                 asLong(item.value("count"))});
+        }
+        m_statusPie->setLegendHtml(ChartTheme::compactLegendHtml(statusSlices));
+        m_statusPie->setChart(ChartTheme::buildPieChart(statusSlices));
+
+        QVector<QPair<QString, qint64>> typeSlices;
         for (const QJsonValue &v : o.value("typeDist").toArray()) {
-            const QJsonObject t = v.toObject();
-            typeParts << QStringLiteral("%1 %2").arg(typeLabel(t.value("name").toString()))
-                             .arg(asLong(t.value("count")));
+            const QJsonObject item = v.toObject();
+            typeSlices.append({ChartTheme::typeLabel(item.value("name").toString()),
+                               asLong(item.value("count"))});
         }
-        QString scale = QStringLiteral("已下线 %1 · 分类 %2 · 标签 %3")
-                            .arg(asLong(o.value("articleOffline")))
-                            .arg(asLong(o.value("categoryCount")))
-                            .arg(asLong(o.value("tagCount")));
-        if (!typeParts.isEmpty()) {
-            scale += QStringLiteral("   |   知识类型：") + typeParts.join(QStringLiteral(" · "));
-        }
-        m_scaleLine->setText(scale);
+        m_typePie->setLegendHtml(ChartTheme::compactLegendHtml(typeSlices));
+        m_typePie->setChart(ChartTheme::buildPieChart(typeSlices));
 
         setStatus(QString());
+    });
+}
+
+void StatisticsPage::loadTrend() {
+    const QString path = isMonthlyTrend()
+                             ? QStringLiteral("/statistics/trend?year=%1").arg(trendYear())
+                             : QStringLiteral("/statistics/trend?days=%1").arg(trendDays());
+    ApiClient::instance().get(path, [this](const ApiResponse &r) {
+        if (!r.ok) {
+            setStatus(r.message, true);
+            return;
+        }
+        const QJsonObject d = r.object();
+        const bool monthly = d.value("granularity").toString() == QStringLiteral("month");
+        const QStringList cats = datesFromTrend(d.value("views").toArray(), monthly);
+        const QVector<qint64> views = countsFromTrend(d.value("views").toArray());
+        const QVector<qint64> searches = countsFromTrend(d.value("searches").toArray());
+        const QVector<qint64> newArts = countsFromTrend(d.value("newArticles").toArray());
+        const QVector<qint64> onlineArts = countsFromTrend(d.value("onlineArticles").toArray());
+
+        m_activityChart->setLegendHtml(
+            ChartTheme::compactSeriesLegendHtml({QStringLiteral("浏览"), QStringLiteral("检索")}));
+        m_activityChart->setChart(ChartTheme::buildLineChart(
+            cats, {{QStringLiteral("浏览"), views}, {QStringLiteral("检索"), searches}}));
+
+        m_contentChart->setLegendHtml(
+            ChartTheme::compactSeriesLegendHtml({QStringLiteral("新增"), QStringLiteral("上线")}));
+        m_contentChart->setChart(ChartTheme::buildLineChart(
+            cats, {{QStringLiteral("新增"), newArts}, {QStringLiteral("上线"), onlineArts}}));
+    });
+}
+
+void StatisticsPage::loadCategoryRank() {
+    ApiClient::instance().get("/statistics/category-rank?limit=10", [this](const ApiResponse &r) {
+        if (!r.ok) {
+            setStatus(r.message, true);
+            return;
+        }
+        QStringList labels;
+        QVector<qint64> values;
+        for (const QJsonValue &v : r.data.toArray()) {
+            const QJsonObject o = v.toObject();
+            labels.prepend(o.value("categoryName").toString().trimmed());
+            values.prepend(asLong(o.value("articleCount")));
+        }
+        m_categoryChart->setChart(
+            ChartTheme::buildHorizontalBarChart(labels, values, QColor(), 120));
+        m_categoryChart->setChartMinHeight(qMax(320, labels.size() * 32 + 48));
     });
 }
 
@@ -213,72 +395,116 @@ void StatisticsPage::loadHotArticles() {
             setStatus(r.message, true);
             return;
         }
-        const QJsonArray list = r.data.toArray();
-        m_hotArticles->setRowCount(0);
-        int rank = 0;
-        for (const QJsonValue &v : list) {
+        QStringList labels;
+        QStringList fullLabels;
+        QVector<qint64> values;
+        for (const QJsonValue &v : r.data.toArray()) {
             const QJsonObject o = v.toObject();
-            const int row = m_hotArticles->rowCount();
-            m_hotArticles->insertRow(row);
-            auto *rankItem = new QTableWidgetItem(QString::number(++rank));
-            rankItem->setData(Qt::UserRole, o.value("id").toVariant());
-            rankItem->setTextAlignment(Qt::AlignCenter);
-            m_hotArticles->setItem(row, 0, rankItem);
-            m_hotArticles->setItem(row, 1, new QTableWidgetItem(o.value("title").toString()));
-            m_hotArticles->setItem(row, 2, new QTableWidgetItem(o.value("categoryName").toString()));
-            m_hotArticles->setItem(row, 3, new QTableWidgetItem(typeLabel(o.value("knowledgeType").toString())));
-            m_hotArticles->setItem(row, 4, new QTableWidgetItem(QString::number(asLong(o.value("viewCount")))));
-            m_hotArticles->setItem(row, 5, new QTableWidgetItem(QString::number(asLong(o.value("favoriteCount")))));
-            m_hotArticles->setItem(row, 6, new QTableWidgetItem(QString::number(asLong(o.value("commentCount")))));
+            const QString title = o.value("title").toString().trimmed();
+            fullLabels.prepend(title);
+            labels.prepend(truncateLabel(title, 10));
+            values.prepend(asLong(o.value("viewCount")));
         }
+        m_hotArticleChart->setChart(ChartTheme::buildHorizontalBarChart(
+            labels, values, QColor("#6B7F74"), 72, fullLabels));
+        m_hotArticleChart->setChartMinHeight(qMax(300, labels.size() * 32 + 48));
     });
 }
 
 void StatisticsPage::loadHotKeywords() {
-    const int days = m_keywordWindow ? m_keywordWindow->currentData().toInt() : 30;
-    const QString path = QStringLiteral("/statistics/hot-keyword?limit=10&days=%1").arg(days);
+    const QString path =
+        QStringLiteral("/statistics/hot-keyword?limit=10&days=%1").arg(trendDays());
     ApiClient::instance().get(path, [this](const ApiResponse &r) {
         if (!r.ok) {
             setStatus(r.message, true);
             return;
         }
-        const QJsonArray list = r.data.toArray();
-        m_hotKeywords->setRowCount(0);
-        int rank = 0;
-        for (const QJsonValue &v : list) {
+        QStringList labels;
+        QStringList fullLabels;
+        QVector<qint64> values;
+        for (const QJsonValue &v : r.data.toArray()) {
             const QJsonObject o = v.toObject();
-            const int row = m_hotKeywords->rowCount();
-            m_hotKeywords->insertRow(row);
-            auto *rankItem = new QTableWidgetItem(QString::number(++rank));
-            rankItem->setTextAlignment(Qt::AlignCenter);
-            m_hotKeywords->setItem(row, 0, rankItem);
-            m_hotKeywords->setItem(row, 1, new QTableWidgetItem(o.value("keyword").toString()));
-            m_hotKeywords->setItem(row, 2, new QTableWidgetItem(QString::number(asLong(o.value("searchCount")))));
-            m_hotKeywords->setItem(row, 3, new QTableWidgetItem(QString::number(asLong(o.value("zeroCount")))));
+            const QString kw = o.value("keyword").toString().trimmed();
+            fullLabels.prepend(kw);
+            labels.prepend(truncateLabel(kw, 10));
+            values.prepend(asLong(o.value("searchCount")));
+        }
+        m_hotKeywordChart->setChart(ChartTheme::buildHorizontalBarChart(
+            labels, values, QColor("#8A9690"), 72, fullLabels));
+        m_hotKeywordChart->setChartMinHeight(qMax(300, labels.size() * 32 + 48));
+    });
+}
+
+void StatisticsPage::loadAuditOverview() {
+    ApiClient::instance().get("/statistics/audit-overview", [this](const ApiResponse &r) {
+        if (!r.ok) {
+            setStatus(r.message, true);
+            return;
+        }
+        const QJsonObject o = r.object();
+        const qint64 pending = asLong(o.value("pendingAudit"));
+        const qint64 pass = asLong(o.value("passCount"));
+        const qint64 reject = asLong(o.value("rejectCount"));
+        const double rate = o.value("passRate").toDouble(-1);
+
+        QString sub = QStringLiteral("当前待审 %1 篇").arg(pending);
+        if (rate >= 0) {
+            sub += QStringLiteral(" · 历史通过率 %1%").arg(QString::number(rate * 100, 'f', 1));
+        }
+        m_auditChart->setSubtitle(sub);
+
+        QVector<QPair<QString, qint64>> slices;
+        for (const QJsonValue &v : o.value("resultDist").toArray()) {
+            const QJsonObject item = v.toObject();
+            slices.append({ChartTheme::statusLabel(item.value("name").toString()),
+                           asLong(item.value("count"))});
+        }
+        if (pending > 0) {
+            slices.prepend({QStringLiteral("待审核"), pending});
+        }
+        m_auditChart->setLegendHtml(ChartTheme::compactLegendHtml(slices));
+        m_auditChart->setChart(ChartTheme::buildPieChart(slices));
+    });
+}
+
+void StatisticsPage::loadQaOverview() {
+    const QString path = QStringLiteral("/statistics/qa-overview?days=%1").arg(trendDays());
+    ApiClient::instance().get(path, [this](const ApiResponse &r) {
+        if (!r.ok) {
+            setStatus(r.message, true);
+            return;
+        }
+        const QJsonObject o = r.object();
+        const qint64 sessions = asLong(o.value("sessionTotal"));
+        const qint64 messages = asLong(o.value("messageTotal"));
+        const qint64 helpful = asLong(o.value("helpfulCount"));
+        const qint64 unhelpful = asLong(o.value("unhelpfulCount"));
+        const double rate = o.value("helpfulRate").toDouble(-1);
+
+        QString sub = QStringLiteral("会话 %1 · 消息 %2 · 反馈 👍%3 / 👎%4")
+                          .arg(sessions)
+                          .arg(messages)
+                          .arg(helpful)
+                          .arg(unhelpful);
+        if (rate >= 0) {
+            sub += QStringLiteral(" · 有用率 %1%").arg(QString::number(rate * 100, 'f', 1));
+        }
+        m_qaChart->setSubtitle(sub);
+
+        const QStringList cats = datesFromTrend(o.value("sessionTrend").toArray(), false);
+        const QVector<qint64> trend = countsFromTrend(o.value("sessionTrend").toArray());
+        m_qaChart->setLegendHtml(ChartTheme::compactSeriesLegendHtml({QStringLiteral("会话")}));
+        m_qaChart->setChart(ChartTheme::buildLineChart(cats, {{QStringLiteral("会话"), trend}}));
+        if (!cats.isEmpty()) {
+            m_qaChart->setChartMinHeight(260);
         }
     });
 }
 
-void StatisticsPage::openArticleDetail() {
-    const int row = m_hotArticles->currentRow();
-    if (row < 0 || !m_hotArticles->item(row, 0)) {
-        return;
-    }
-    const qint64 id = m_hotArticles->item(row, 0)->data(Qt::UserRole).toLongLong();
-    if (id <= 0) {
-        return;
-    }
-    if (!Session::instance().hasPermission("knowledge:search")) {
-        notify::warn(this, QStringLiteral("当前角色无知识查看权限"));
-        return;
-    }
-    ArticleDetailDialog dlg(id, this);
-    dlg.exec();
-}
-
 void StatisticsPage::setStatus(const QString &text, bool error) {
+    m_status->setVisible(!text.isEmpty());
     m_status->setText(text);
-    m_status->setStyleSheet(error ? "color:#DC2626;" : "color:#6B7280;");
+    m_status->setStyleSheet(error ? "color:#B94A48;" : "color:#757575;");
     if (error && !text.isEmpty()) {
         notify::warn(this, text);
     }

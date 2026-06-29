@@ -1,46 +1,66 @@
 #pragma once
 
+#include "app/RefreshablePage.h"
+
+#include <QResizeEvent>
 #include <QWidget>
 
+class QFrame;
 class QLabel;
-class QTableWidget;
+class QHBoxLayout;
+class QScrollArea;
+class QVBoxLayout;
 
 namespace kb {
 
 /**
- * 首页仪表盘（路由 dashboard，目录「工作台」）：登录后的落地页，按角色自适应。
- *   - 所有角色：问候区 + 快捷入口（知识检索 / 我的收藏 / 我的分享，按菜单可见性显隐）。
- *   - 有 statistics:view 的角色：额外展示概览指标卡（知识总数 / 已上线 / 待审核 / 草稿）、
- *     今日动态、热门知识 TOP5（双击开只读详情）。数据复用 /statistics/overview、/statistics/hot-article。
- * 无 statistics:view 的角色不发起 /statistics/* 请求，避免 2003。统一复用 app.qss 主题。
+ * 首页仪表盘（路由 dashboard）：问候 + 快捷入口 + 与我相关 KPI + 推荐/热门双栏。
  */
-class DashboardPage : public QWidget {
+class DashboardPage : public QWidget, public RefreshablePage {
     Q_OBJECT
 
 public:
     explicit DashboardPage(const QString &title, QWidget *parent = nullptr);
 
+    void refreshPage() override;
+
 signals:
-    /** 请求切换到指定路由（由 MainWindow 接到左侧导航树）。 */
     void navigateRequested(const QString &name);
 
 private:
     void buildUi();
-    void loadOverview();
+    void loadMyKpi();
+    void loadRecommendations();
     void loadHotArticles();
-    void openArticleDetail();
+    void openArticle(qint64 articleId);
     void setStatus(const QString &text, bool error = false);
+    void syncHotPanelHeight();
+    static QString pinnedTagIdsParam();
+
+    void resizeEvent(QResizeEvent *event) override;
 
     QString m_title;
     bool m_canStats = false;
+    bool m_canHotArticles = false;
+    bool m_kpiAdminMode = false;
 
     QLabel *m_status = nullptr;
-    QLabel *m_cardTotal = nullptr;
-    QLabel *m_cardOnline = nullptr;
-    QLabel *m_cardPending = nullptr;
-    QLabel *m_cardDraft = nullptr;
-    QLabel *m_todayLine = nullptr;
-    QTableWidget *m_hotArticles = nullptr;
+    QLabel *m_kpiSectionTitle = nullptr;
+    QLabel *m_kpiValues[4] = {};
+    QLabel *m_kpiCaptions[4] = {};
+    QLabel *m_recommendHint = nullptr;
+    QScrollArea *m_quickScroll = nullptr;
+    QWidget *m_quickHost = nullptr;
+    QHBoxLayout *m_quickRow = nullptr;
+    QVBoxLayout *m_recommendFeed = nullptr;
+    QVBoxLayout *m_hotRankList = nullptr;
+    QWidget *m_leftCol = nullptr;
+    QFrame *m_rightCol = nullptr;
+    QScrollArea *m_hotScroll = nullptr;
+    QWidget *m_hotListHost = nullptr;
+    QWidget *m_contentRow = nullptr;
+
+    static constexpr int kHotFetchLimit = 15;
 };
 
 } // namespace kb

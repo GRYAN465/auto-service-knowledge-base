@@ -1,9 +1,13 @@
 package com.kb.statistics;
 
 import com.kb.common.Result;
+import com.kb.statistics.dto.AuditOverviewVO;
+import com.kb.statistics.dto.CategoryRankVO;
 import com.kb.statistics.dto.HotArticleVO;
 import com.kb.statistics.dto.HotKeywordVO;
 import com.kb.statistics.dto.OverviewVO;
+import com.kb.statistics.dto.QaOverviewVO;
+import com.kb.statistics.dto.TrendVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -40,7 +44,7 @@ public class StatisticsController {
 
     @Operation(summary = "热门知识（按累计浏览量，可选分类含子分类）")
     @GetMapping("/hot-article")
-    @PreAuthorize("hasAuthority('statistics:view')")
+    @PreAuthorize("hasAnyAuthority('statistics:view', 'knowledge:search')")
     public Result<List<HotArticleVO>> hotArticle(@RequestParam(required = false) Long categoryId,
                                                  @RequestParam(defaultValue = "10") int limit) {
         return Result.ok(statisticsService.hotArticles(categoryId, limit));
@@ -52,5 +56,37 @@ public class StatisticsController {
     public Result<List<HotKeywordVO>> hotKeyword(@RequestParam(defaultValue = "30") int days,
                                                  @RequestParam(defaultValue = "10") int limit) {
         return Result.ok(statisticsService.hotKeywords(days, limit));
+    }
+
+    @Operation(summary = "平台活跃与内容生产趋势（日/月）")
+    @GetMapping("/trend")
+    @PreAuthorize("hasAuthority('statistics:view')")
+    public Result<TrendVO> trend(@RequestParam(defaultValue = "30") int days,
+                                 @RequestParam(required = false) Integer year) {
+        if (year != null) {
+            return Result.ok(statisticsService.trendMonthly(year));
+        }
+        return Result.ok(statisticsService.trend(days));
+    }
+
+    @Operation(summary = "分类知识量排行")
+    @GetMapping("/category-rank")
+    @PreAuthorize("hasAuthority('statistics:view')")
+    public Result<List<CategoryRankVO>> categoryRank(@RequestParam(defaultValue = "10") int limit) {
+        return Result.ok(statisticsService.categoryRank(limit));
+    }
+
+    @Operation(summary = "审核运营概览")
+    @GetMapping("/audit-overview")
+    @PreAuthorize("hasAuthority('statistics:view')")
+    public Result<AuditOverviewVO> auditOverview() {
+        return Result.ok(statisticsService.auditOverview());
+    }
+
+    @Operation(summary = "智能问答运营概览")
+    @GetMapping("/qa-overview")
+    @PreAuthorize("hasAuthority('statistics:view')")
+    public Result<QaOverviewVO> qaOverview(@RequestParam(defaultValue = "30") int days) {
+        return Result.ok(statisticsService.qaOverview(days));
     }
 }

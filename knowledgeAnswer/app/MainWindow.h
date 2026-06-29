@@ -3,6 +3,7 @@
 #include <QMainWindow>
 
 class QLabel;
+class QPushButton;
 class QTreeWidget;
 class QTreeWidgetItem;
 class QStackedWidget;
@@ -29,11 +30,13 @@ private:
     void buildNav();
     void navigateToCurrent();
     void navigateToRoute(const QString &name);
+    void updateTopBarRefresh();
 
     QTreeWidget *m_nav = nullptr;
     QStackedWidget *m_stack = nullptr;
     PageRouter *m_router = nullptr;
     QLabel *m_pageTitle = nullptr;
+    QPushButton *m_refreshBtn = nullptr;
 };
 
 } // namespace kb

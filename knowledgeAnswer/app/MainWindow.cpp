@@ -1,21 +1,28 @@
 #include "app/MainWindow.h"
 
+#include "app/RefreshablePage.h"
+
 #include "app/AiConfigPage.h"
 #include "app/ArticleManagePage.h"
 #include "app/AuditCenterPage.h"
 #include "app/DashboardPage.h"
-#include "app/FavoritePage.h"
 #include "app/KnowledgeBasePage.h"
 #include "app/OpenApiPage.h"
 #include "app/PageRouter.h"
 #include "app/PlaceholderPage.h"
+#include "app/ProfilePage.h"
 #include "app/QaPage.h"
 #include "app/SearchPage.h"
 #include "app/SharePage.h"
 #include "app/StatisticsPage.h"
 #include "app/SystemAdminPage.h"
+#include "common/NavTreeDelegate.h"
+#include "common/ComboStyle.h"
+#include "common/NavIcons.h"
+#include "common/ThemeIcons.h"
 #include "core/auth/Session.h"
 
+#include <QComboBox>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -31,6 +38,21 @@
 namespace kb {
 
 namespace {
+
+QVector<MenuItem> filterNavMenus(const QVector<MenuItem> &menus) {
+    QVector<MenuItem> out;
+    out.reserve(menus.size());
+    for (const MenuItem &m : menus) {
+        if (m.name == QStringLiteral("favorite")) {
+            continue;
+        }
+        MenuItem copy = m;
+        copy.children = filterNavMenus(m.children);
+        out.append(copy);
+    }
+    return out;
+}
+
 // 深度优先遍历菜单树。
 void walkMenus(const QVector<MenuItem> &items,
                const std::function<void(const MenuItem &)> &fn) {
@@ -40,6 +62,51 @@ void walkMenus(const QVector<MenuItem> &items,
             walkMenus(m.children, fn);
         }
     }
+}
+
+QTreeWidgetItem *findNavItemByRoute(QTreeWidget *nav, const QString &route) {
+    if (!nav || route.isEmpty()) {
+        return nullptr;
+    }
+    for (QTreeWidgetItemIterator it(nav); *it; ++it) {
+        if ((*it)->data(0, Qt::UserRole).toString() == route) {
+            return *it;
+        }
+    }
+    return nullptr;
+}
+
+QTreeWidgetItem *findFirstNavigableItem(QTreeWidget *nav, const PageRouter *router) {
+    if (!nav || !router) {
+        return nullptr;
+    }
+    for (QTreeWidgetItemIterator it(nav); *it; ++it) {
+        QTreeWidgetItem *item = *it;
+        const QString route = item->data(0, Qt::UserRole).toString();
+        if (route.isEmpty() || !router->hasPage(route)) {
+            continue;
+        }
+        if (item->flags() & Qt::ItemIsSelectable) {
+            return item;
+        }
+    }
+    return nullptr;
+}
+
+QTreeWidgetItem *pickInitialNavItem(QTreeWidget *nav, const PageRouter *router) {
+    static const QStringList preferred = {
+        QStringLiteral("dashboard"),
+        QStringLiteral("knowledge.search"),
+    };
+    for (const QString &route : preferred) {
+        if (!router->hasPage(route)) {
+            continue;
+        }
+        if (QTreeWidgetItem *item = findNavItemByRoute(nav, route)) {
+            return item;
+        }
+    }
+    return findFirstNavigableItem(nav, router);
 }
 } // namespace
 
@@ -68,20 +135,53 @@ void MainWindow::buildUi() {
     m_pageTitle = new QLabel(QString(), topBar);
     m_pageTitle->setObjectName("PageTitle");
 
-    const CurrentUser &u = Session::instance().user();
-    QString badge = u.realName.isEmpty() ? u.username
-                                         : QStringLiteral("%1（%2）").arg(u.realName, u.username);
-    auto *userBadge = new QLabel(badge, topBar);
-    userBadge->setObjectName("UserBadge");
+    m_refreshBtn = new QPushButton(topBar);
+    ThemeIcons::applyIconButton(m_refreshBtn, ThemeIcons::Kind::Refresh,
+                                QStringLiteral("刷新当前页面"));
+    m_refreshBtn->setVisible(false);
+    connect(m_refreshBtn, &QPushButton::clicked, this, [this]() {
+        if (auto *page = dynamic_cast<RefreshablePage *>(m_router->currentWidget())) {
+            page->refreshPage();
+        }
+    });
 
-    auto *logout = new QPushButton(QStringLiteral("退出登录"), topBar);
-    logout->setObjectName("GhostButton");
-    logout->setCursor(Qt::PointingHandCursor);
+    const CurrentUser &u = Session::instance().user();
+    const QString userTip = u.realName.isEmpty() ? u.username
+                                                 : QStringLiteral("%1（%2）").arg(u.realName, u.username);
+    auto *userBtn = new QPushButton(topBar);
+    ThemeIcons::applyIconButton(userBtn, ThemeIcons::Kind::User, userTip);
+    connect(userBtn, &QPushButton::clicked, this, [this]() { navigateToRoute(QStringLiteral("personal.center")); });
+
+    auto *logout = new QPushButton(topBar);
+    ThemeIcons::applyIconButton(logout, ThemeIcons::Kind::Logout, QStringLiteral("退出登录"));
     connect(logout, &QPushButton::clicked, this, &MainWindow::loggedOut);
 
     topLayout->addWidget(m_pageTitle);
+    topLayout->addSpacing(12);
+    topLayout->addWidget(m_refreshBtn);
     topLayout->addStretch();
-    topLayout->addWidget(userBadge);
+
+    const QVector<QString> &roles = Session::instance().roles();
+    if (!roles.isEmpty()) {
+        QString roleText = roles.first();
+        if (roleText == QStringLiteral("ADMIN")) {
+            roleText = QStringLiteral("管理员");
+        } else if (roleText == QStringLiteral("KNOWLEDGE_ADMIN")) {
+            roleText = QStringLiteral("知识管理员");
+        } else if (roleText == QStringLiteral("AUDITOR")) {
+            roleText = QStringLiteral("审核员");
+        } else if (roleText == QStringLiteral("AGENT")) {
+            roleText = QStringLiteral("坐席");
+        } else if (roleText == QStringLiteral("USER")) {
+            roleText = QStringLiteral("普通用户");
+        }
+        auto *roleBadge = new QLabel(roleText, topBar);
+        roleBadge->setObjectName("RoleBadge");
+        topLayout->addWidget(roleBadge);
+        topLayout->addSpacing(12);
+    }
+
+    topLayout->addWidget(userBtn);
     topLayout->addSpacing(14);
     topLayout->addWidget(logout);
 
@@ -91,18 +191,27 @@ void MainWindow::buildUi() {
     bodyLayout->setContentsMargins(0, 0, 0, 0);
     bodyLayout->setSpacing(0);
 
-    m_nav = new QTreeWidget(body);
+    auto *navSidebar = new QFrame(body);
+    navSidebar->setObjectName("NavSidebar");
+    navSidebar->setFixedWidth(220);
+    auto *navLayout = new QVBoxLayout(navSidebar);
+    navLayout->setContentsMargins(0, 0, 0, 0);
+    navLayout->setSpacing(0);
+
+    m_nav = new QTreeWidget(navSidebar);
     m_nav->setObjectName("NavTree");
     m_nav->setHeaderHidden(true);
-    m_nav->setFixedWidth(220);
-    m_nav->setIndentation(12);
+    m_nav->setIndentation(14);
     m_nav->setRootIsDecorated(false);
     m_nav->setFrameShape(QFrame::NoFrame);
+    m_nav->setItemDelegate(new NavTreeDelegate(m_nav));
+    m_nav->setMouseTracking(true);
+    navLayout->addWidget(m_nav);
 
     m_stack = new QStackedWidget(body);
     m_stack->setObjectName("ContentStack");
 
-    bodyLayout->addWidget(m_nav);
+    bodyLayout->addWidget(navSidebar);
     bodyLayout->addWidget(m_stack, 1);
 
     rootLayout->addWidget(topBar);
@@ -111,13 +220,27 @@ void MainWindow::buildUi() {
     setCentralWidget(central);
 
     m_router = new PageRouter(m_stack, this);
+    connect(m_router, &PageRouter::pageShown, this, [this](const QString &, bool firstVisit) {
+        updateTopBarRefresh();
+        if (QWidget *page = m_router->currentWidget()) {
+            for (QComboBox *combo : page->findChildren<QComboBox *>()) {
+                ComboStyle::polish(combo);
+            }
+        }
+        if (firstVisit) {
+            return;
+        }
+        if (auto *page = dynamic_cast<RefreshablePage *>(m_router->currentWidget())) {
+            page->refreshPage();
+        }
+    });
 
     connect(m_nav, &QTreeWidget::currentItemChanged, this,
             [this](QTreeWidgetItem *, QTreeWidgetItem *) { navigateToCurrent(); });
 }
 
 void MainWindow::registerPages() {
-    walkMenus(Session::instance().menus(), [this](const MenuItem &m) {
+    walkMenus(filterNavMenus(Session::instance().menus()), [this](const MenuItem &m) {
         if (m.name.isEmpty()) {
             return;
         }
@@ -143,8 +266,8 @@ void MainWindow::registerPages() {
             if (name == QStringLiteral("knowledge.search")) {
                 return new SearchPage(title);
             }
-            if (name == QStringLiteral("favorite")) {
-                return new FavoritePage(title);
+            if (name == QStringLiteral("personal.center")) {
+                return new ProfilePage(title);
             }
             if (name == QStringLiteral("share")) {
                 return new SharePage(title);
@@ -180,23 +303,21 @@ void MainWindow::buildNav() {
                 item->setText(0, m.title);
                 item->setData(0, Qt::UserRole, m.name);
                 if (!m.children.isEmpty()) {
+                    item->setData(0, NavTreeDelegate::NavItemKindRole, QStringLiteral("group"));
                     // 父节点仅用于分组，不可选中
                     item->setFlags(item->flags() & ~Qt::ItemIsSelectable);
                     add(m.children, item);
                     item->setExpanded(true);
+                } else {
+                    item->setData(0, NavTreeDelegate::NavItemKindRole, QStringLiteral("link"));
+                    item->setData(0, NavTreeDelegate::NavIconPathRole, NavIcons::pathForRoute(m.name));
                 }
             }
         };
-    add(Session::instance().menus(), nullptr);
+    add(filterNavMenus(Session::instance().menus()), nullptr);
 
-    // 默认选中首个可导航项
-    for (int i = 0; i < m_nav->topLevelItemCount(); ++i) {
-        QTreeWidgetItem *item = m_nav->topLevelItem(i);
-        const QString name = item->data(0, Qt::UserRole).toString();
-        if (m_router->hasPage(name)) {
-            m_nav->setCurrentItem(item);
-            break;
-        }
+    if (QTreeWidgetItem *initial = pickInitialNavItem(m_nav, m_router)) {
+        m_nav->setCurrentItem(initial);
     }
 }
 
@@ -211,6 +332,14 @@ void MainWindow::navigateToCurrent() {
     }
     m_router->navigate(name);
     m_pageTitle->setText(item->text(0));
+}
+
+void MainWindow::updateTopBarRefresh() {
+    if (!m_refreshBtn || !m_router) {
+        return;
+    }
+    const bool canRefresh = dynamic_cast<RefreshablePage *>(m_router->currentWidget()) != nullptr;
+    m_refreshBtn->setVisible(canRefresh);
 }
 
 void MainWindow::navigateToRoute(const QString &name) {
