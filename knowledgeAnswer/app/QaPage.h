@@ -3,6 +3,7 @@
 #include <QString>
 #include <QWidget>
 
+class QComboBox;
 class QJsonArray;
 class QJsonObject;
 class QLabel;
@@ -55,6 +56,7 @@ private:
     QLineEdit *m_input = nullptr;
     QPushButton *m_sendBtn = nullptr;
     QLabel *m_status = nullptr;
+    QComboBox *m_kbSelector = nullptr;
 };
 
 } // namespace kb

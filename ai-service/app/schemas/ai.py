@@ -65,7 +65,7 @@ class Citation(BaseModel):
 
 class QaRequest(BaseModel):
     question: str
-    knowledge_type: KnowledgeType = Field(..., description="知识类型")
+    knowledge_type: KnowledgeType | None = Field(None, description="知识类型；None 则默认搜索话术库")
     top_k: int = Field(5, description="召回条数")
     # 权限与上线状态过滤由 Java 编排层完成，传入允许检索的知识范围
     allowed_article_ids: list[int] | None = Field(

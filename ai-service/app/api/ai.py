@@ -104,12 +104,11 @@ def qa_endpoint(req: QaRequest) -> QaResponse:
 
     检索/向量库异常照常上抛 500；LLM 异常已在 qa.answer 内兜底，不会冒泡。
     """
-    result = qa.answer(
-        req.question,
-        knowledge_type=req.knowledge_type,
-        top_k=req.top_k,
-        allowed_article_ids=req.allowed_article_ids,
-    )
+    kwargs = {"question": req.question, "top_k": req.top_k,
+               "allowed_article_ids": req.allowed_article_ids}
+    if req.knowledge_type is not None:
+        kwargs["knowledge_type"] = req.knowledge_type
+    result = qa.answer(**kwargs)
     return QaResponse(
         answer=result["answer"],
         citations=[Citation(**c) for c in result["citations"]],
