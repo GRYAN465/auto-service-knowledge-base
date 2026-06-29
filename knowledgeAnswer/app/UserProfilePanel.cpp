@@ -3,6 +3,7 @@
 #include "app/ArticleFeedCard.h"
 #include "app/ChangePasswordDialog.h"
 #include "common/AvatarLabel.h"
+#include "common/ThemeIcons.h"
 #include "core/auth/Session.h"
 #include "core/network/ApiClient.h"
 #include "core/notify/Notify.h"
@@ -59,8 +60,8 @@ void UserProfilePanel::buildUi() {
     root->setSpacing(14);
 
     if (m_showBack) {
-        auto *back = new QPushButton(QStringLiteral("← 返回"), this);
-        back->setObjectName("GhostButton");
+        auto *back = new QPushButton(this);
+        ThemeIcons::applyIconButton(back, ThemeIcons::Kind::Back, QStringLiteral("返回"));
         connect(back, &QPushButton::clicked, this, &UserProfilePanel::backRequested);
         root->addWidget(back, 0, Qt::AlignLeft);
     }

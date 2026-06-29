@@ -126,6 +126,58 @@ QPushButton#GhostButton[active="true"] {
     background-color: rgba(154, 166, 157, 0.18);
 }
 
+/* ===== 图标按钮（无边框 · 主题绿图标） ===== */
+QPushButton#IconButton {
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    padding: 6px;
+    min-width: 32px;
+    min-height: 32px;
+}
+QPushButton#IconButton:hover {
+    background: rgba(154, 166, 157, 0.14);
+}
+QPushButton#IconButton:pressed {
+    background: rgba(154, 166, 157, 0.24);
+}
+QPushButton#IconButton[active="true"] {
+    background: transparent;
+}
+
+QPushButton#TextLink {
+    background: transparent;
+    border: none;
+    color: #000000;
+    padding: 0 4px;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: left;
+}
+QPushButton#TextLink:hover {
+    color: #6B7F74;
+}
+QPushButton#TextLink:pressed {
+    color: #9AA69D;
+}
+QPushButton#IconButton:disabled {
+    background: transparent;
+    opacity: 0.4;
+}
+
+#InteractionCount {
+    color: #757575;
+    font-size: 13px;
+    font-weight: 500;
+    background: transparent;
+    padding: 0 2px 0 0;
+    min-width: 12px;
+}
+#InteractionCount[active="true"] {
+    color: #6B7F74;
+    font-weight: 600;
+}
+
 /* ===== 单行输入 ===== */
 QLineEdit {
     background-color: #F1EEE8;
@@ -151,8 +203,9 @@ QComboBox {
     color: #000000;
     border: 1px solid #E0D9CE;
     border-radius: 8px;
-    padding: 8px 12px;
+    padding: 8px 32px 8px 12px;
     min-height: 22px;
+    combobox-popup: 0;
 }
 QComboBox:hover {
     border-color: #9AA69D;
@@ -167,48 +220,50 @@ QComboBox:disabled {
 }
 QComboBox::drop-down {
     subcontrol-origin: padding;
-    subcontrol-position: top right;
+    subcontrol-position: center right;
     width: 28px;
     border: none;
-    border-left: 1px solid #E0D9CE;
-    border-top-right-radius: 8px;
-    border-bottom-right-radius: 8px;
-    background-color: #F3EDE4;
-}
-QComboBox::drop-down:hover {
-    background-color: #EBE4D8;
+    background: transparent;
 }
 QComboBox::down-arrow {
-    width: 0;
-    height: 0;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 6px solid #757575;
+    image: url(:/icons/chevron-down.svg);
+    width: 14px;
+    height: 14px;
 }
-QComboBox QAbstractItemView {
+QComboBox QAbstractItemView,
+QComboBox QListView {
     background-color: #FEFEFE;
     color: #000000;
-    border: 1px solid #E0D9CE;
+    border: 1px solid #E8E2D8;
     border-radius: 8px;
-    padding: 4px;
+    padding: 4px 0;
     outline: 0;
     selection-background-color: #F0EBE4;
     selection-color: #000000;
 }
-QComboBox QAbstractItemView::item {
+QComboBox QAbstractItemView::item,
+QComboBox QListView::item {
     min-height: 32px;
-    padding: 6px 12px;
+    padding: 6px 14px;
     color: #000000;
-    background-color: #FEFEFE;
+    background-color: transparent;
+    border: none;
 }
-QComboBox QAbstractItemView::item:hover {
+QComboBox QAbstractItemView::item:hover,
+QComboBox QListView::item:hover {
     background-color: #FAF8F4;
     color: #000000;
 }
-QComboBox QAbstractItemView::item:selected {
+QComboBox QAbstractItemView::item:selected,
+QComboBox QListView::item:selected {
     background-color: #F0EBE4;
     color: #000000;
     font-weight: 600;
+}
+#ComboPopupList {
+    border: none;
+    background: transparent;
+    outline: 0;
 }
 
 /* ===== 多行文本 / 富文本详情 ===== */
@@ -543,6 +598,72 @@ QPushButton#LinkButton:hover {
     background: transparent;
 }
 
+/* ===== 首页快捷入口 ===== */
+#QuickEntryScroll {
+    background: transparent;
+    border: none;
+}
+#QuickEntryScroll QWidget {
+    background: transparent;
+}
+QToolButton#QuickEntryTile {
+    background-color: #FEFEFE;
+    border: 1px solid #F1EEE8;
+    border-radius: 10px;
+    padding: 8px 6px 6px 6px;
+    font-size: 12px;
+    color: #4A4A4A;
+}
+QToolButton#QuickEntryTile:hover {
+    background-color: #F6F0E4;
+    border-color: #E8E2D8;
+    color: #1A1A1A;
+}
+QToolButton#QuickEntryTile:pressed {
+    background-color: #F0EBE4;
+}
+
+/* ===== 首页热门排行 ===== */
+#HotRankRow {
+    background-color: #F8F6F2;
+    border: 1px solid transparent;
+    border-radius: 8px;
+}
+#HotRankRow:hover {
+    background-color: #F6F0E4;
+    border-color: #F1EEE8;
+}
+#HotRankIndex {
+    font-size: 13px;
+    font-weight: 700;
+    color: #9AA69D;
+    background: transparent;
+}
+#HotRankTitle {
+    font-size: 13px;
+    color: #1A1A1A;
+    background: transparent;
+}
+#HotRankViews {
+    font-size: 12px;
+    color: #757575;
+    min-width: 36px;
+    background: transparent;
+}
+#HotRankScroll {
+    background: transparent;
+    border: none;
+}
+#HotRankScroll QWidget {
+    background: transparent;
+}
+QScrollArea#HotRankScroll QScrollBar:vertical,
+QScrollArea#HotRankScroll QScrollBar:horizontal {
+    width: 0;
+    height: 0;
+    background: transparent;
+}
+
 /* ===== 指标卡片 ===== */
 #StatCard {
     background-color: #FEFEFE;
@@ -576,6 +697,145 @@ QPushButton#LinkButton:hover {
     background: transparent;
 }
 
+/* ===== 统计图表分区 ===== */
+#ChartSection {
+    background-color: #FEFEFE;
+    border: 1px solid #F1EEE8;
+    border-radius: 12px;
+}
+#ChartSection QLabel {
+    background: transparent;
+}
+#ChartView {
+    background: transparent;
+    border: none;
+    min-width: 0;
+}
+#KpiTile {
+    background-color: #F8F6F2;
+    border: 1px solid #F1EEE8;
+    border-radius: 10px;
+}
+#KpiTileLabel {
+    font-size: 12px;
+    color: #757575;
+    background: transparent;
+}
+#KpiTileValue {
+    font-size: 26px;
+    font-weight: 700;
+    color: #1A1A1A;
+    background: transparent;
+}
+#KpiTileValueAccent {
+    font-size: 26px;
+    font-weight: 700;
+    color: #6B7F74;
+    background: transparent;
+}
+#KpiTodayStrip {
+    font-size: 13px;
+    line-height: 1.5;
+    color: #757575;
+    background: transparent;
+    padding: 2px 2px 0 2px;
+}
+
+#KpiGrid {
+    color: #000000;
+    font-size: 14px;
+    line-height: 1.5;
+    background: transparent;
+}
+
+#ChartLegend {
+    color: #4A4A4A;
+    font-size: 12px;
+    line-height: 1.35;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+}
+
+#ChartLegend[vertical="true"] {
+    font-size: 11px;
+    line-height: 1.55;
+    padding-top: 2px;
+}
+
+#ChartLegend[bottom="true"] {
+    font-size: 12px;
+    line-height: 1.4;
+    padding-top: 2px;
+    padding-bottom: 0;
+}
+
+/* ===== 知识社区 · 标签筛选 ===== */
+QScrollArea#TagFilterScroll {
+    background: transparent;
+    border: none;
+}
+QScrollArea#TagFilterScroll > QWidget > QWidget {
+    background: transparent;
+}
+QScrollArea#TagFilterScroll QScrollBar:vertical {
+    width: 0;
+    height: 0;
+}
+QScrollArea#TagFilterScroll QScrollBar:horizontal {
+    height: 5px;
+    background: transparent;
+    margin: 0 2px 1px 2px;
+}
+QScrollArea#TagFilterScroll QScrollBar::handle:horizontal {
+    background: #D4DAD6;
+    border-radius: 2px;
+    min-width: 24px;
+}
+QScrollArea#TagFilterScroll QScrollBar::add-line:horizontal,
+QScrollArea#TagFilterScroll QScrollBar::sub-line:horizontal {
+    width: 0;
+    height: 0;
+}
+
+QPushButton#TagFilterChip {
+    background-color: #FEFEFE;
+    color: #4A4A4A;
+    border: 1px solid #E8E4DC;
+    border-radius: 14px;
+    padding: 5px 12px;
+    font-size: 13px;
+    min-height: 28px;
+}
+QPushButton#TagFilterChip:hover {
+    background-color: #F3EDE4;
+    border-color: #D4CFC6;
+}
+QPushButton#TagFilterChip:checked {
+    background-color: #9AA69D;
+    color: #FFFFFF;
+    border: none;
+    font-weight: 600;
+}
+
+QPushButton#TagPickerChip {
+    background-color: #FEFEFE;
+    color: #4A4A4A;
+    border: none;
+    border-radius: 14px;
+    padding: 7px 14px;
+    font-size: 13px;
+    text-align: center;
+}
+QPushButton#TagPickerChip:hover:!checked {
+    background-color: #F3EDE4;
+}
+QPushButton#TagPickerChip:checked {
+    background-color: #9AA69D;
+    color: #FFFFFF;
+    font-weight: 600;
+}
+
 /* ===== 知识社区流卡片 ===== */
 #FeedCard {
     background-color: #FEFEFE;
@@ -585,6 +845,9 @@ QPushButton#LinkButton:hover {
 #FeedCard:hover {
     border-color: #E8E2D8;
     background-color: #FAF8F4;
+}
+#FeedCard QWidget {
+    background: transparent;
 }
 #FeedCardTitle {
     font-size: 16px;

@@ -58,6 +58,8 @@ private:
     QPushButton *m_likeBtn = nullptr;
     QPushButton *m_dislikeBtn = nullptr;
     QPushButton *m_shareBtn = nullptr;
+    QLabel *m_likeCountLabel = nullptr;
+    QLabel *m_dislikeCountLabel = nullptr;
     QVBoxLayout *m_commentList = nullptr;
     QLineEdit *m_commentInput = nullptr;
     bool m_favorited = false;

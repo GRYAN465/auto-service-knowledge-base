@@ -21,7 +21,7 @@ class UserProfilePanel;
 
 /**
  * 知识社区页（路由 knowledge.search）：
- *   顶栏搜索 + 最新/最热 + 常用标签 + FeedCard 无限滚动。
+ *   顶栏搜索 + 最新/最热 + 标签筛选（横向滚动）+ FeedCard 无限滚动。
  */
 class SearchPage : public QWidget, public RefreshablePage {
     Q_OBJECT
@@ -53,6 +53,8 @@ private:
     QPushButton *m_uploadBtn = nullptr;
     QPushButton *m_latestBtn = nullptr;
     QPushButton *m_hotBtn = nullptr;
+    QScrollArea *m_tagScroll = nullptr;
+    QWidget *m_tagBtnHost = nullptr;
     QHBoxLayout *m_tagBtnRow = nullptr;
     QVBoxLayout *m_feedLayout = nullptr;
     QScrollArea *m_feedScroll = nullptr;

@@ -3,6 +3,7 @@
 #include "app/ShareDialog.h"
 #include "common/AvatarLabel.h"
 #include "common/TagStyle.h"
+#include "common/ThemeIcons.h"
 #include "core/auth/Session.h"
 #include "core/network/ApiClient.h"
 #include "core/notify/Notify.h"
@@ -167,8 +168,8 @@ void ArticleDetailPanel::buildUi() {
     outer->setContentsMargins(28, 20, 28, 20);
     outer->setSpacing(14);
 
-    m_backBtn = new QPushButton(QStringLiteral("← 返回"), this);
-    m_backBtn->setObjectName("GhostButton");
+    m_backBtn = new QPushButton(this);
+    ThemeIcons::applyIconButton(m_backBtn, ThemeIcons::Kind::Back, QStringLiteral("返回"));
     connect(m_backBtn, &QPushButton::clicked, this, &ArticleDetailPanel::backRequested);
     outer->addWidget(m_backBtn, 0, Qt::AlignLeft);
 
@@ -199,7 +200,7 @@ void ArticleDetailPanel::buildUi() {
     auto *authorRow = new QHBoxLayout();
     m_authorAvatar = new AvatarLabel(36, articleCard);
     m_authorBtn = new QPushButton(articleCard);
-    m_authorBtn->setObjectName("GhostButton");
+    m_authorBtn->setObjectName("TextLink");
     m_authorBtn->setFlat(true);
     m_authorBtn->setCursor(Qt::PointingHandCursor);
     connect(m_authorBtn, &QPushButton::clicked, this, [this]() {
@@ -217,26 +218,51 @@ void ArticleDetailPanel::buildUi() {
     articleLayout->addWidget(m_tagsHost);
 
     auto *bar = new QHBoxLayout();
-    bar->setSpacing(8);
-    m_favBtn = new QPushButton(QStringLiteral("☆ 收藏"), articleCard);
-    m_favBtn->setObjectName("GhostButton");
+    bar->setSpacing(4);
+
+    auto *favCell = new QWidget(articleCard);
+    auto *favLayout = new QHBoxLayout(favCell);
+    favLayout->setContentsMargins(0, 0, 0, 0);
+    favLayout->setSpacing(2);
+    m_favBtn = new QPushButton(favCell);
+    ThemeIcons::applyIconButton(m_favBtn, ThemeIcons::Kind::StarOutline, QStringLiteral("收藏"));
     m_favBtn->setEnabled(Session::instance().hasPermission("interaction:favorite"));
     connect(m_favBtn, &QPushButton::clicked, this, &ArticleDetailPanel::toggleFavorite);
-    m_likeBtn = new QPushButton(QStringLiteral("👍 赞"), articleCard);
-    m_likeBtn->setObjectName("GhostButton");
+    favLayout->addWidget(m_favBtn);
+    bar->addWidget(favCell);
+
+    auto *likeCell = new QWidget(articleCard);
+    auto *likeLayout = new QHBoxLayout(likeCell);
+    likeLayout->setContentsMargins(0, 0, 0, 0);
+    likeLayout->setSpacing(2);
+    m_likeBtn = new QPushButton(likeCell);
+    ThemeIcons::applyIconButton(m_likeBtn, ThemeIcons::Kind::ThumbUp, QStringLiteral("点赞"));
     m_likeBtn->setEnabled(Session::instance().hasPermission("interaction:like"));
     connect(m_likeBtn, &QPushButton::clicked, this, [this]() { doLike(1); });
-    m_dislikeBtn = new QPushButton(QStringLiteral("👎 踩"), articleCard);
-    m_dislikeBtn->setObjectName("GhostButton");
+    m_likeCountLabel = new QLabel(QStringLiteral("0"), likeCell);
+    m_likeCountLabel->setObjectName("InteractionCount");
+    likeLayout->addWidget(m_likeBtn);
+    likeLayout->addWidget(m_likeCountLabel);
+    bar->addWidget(likeCell);
+
+    auto *dislikeCell = new QWidget(articleCard);
+    auto *dislikeLayout = new QHBoxLayout(dislikeCell);
+    dislikeLayout->setContentsMargins(0, 0, 0, 0);
+    dislikeLayout->setSpacing(2);
+    m_dislikeBtn = new QPushButton(dislikeCell);
+    ThemeIcons::applyIconButton(m_dislikeBtn, ThemeIcons::Kind::ThumbDown, QStringLiteral("点踩"));
     m_dislikeBtn->setEnabled(Session::instance().hasPermission("interaction:like"));
     connect(m_dislikeBtn, &QPushButton::clicked, this, [this]() { doLike(-1); });
-    m_shareBtn = new QPushButton(QStringLiteral("分享"), articleCard);
-    m_shareBtn->setObjectName("GhostButton");
+    m_dislikeCountLabel = new QLabel(QStringLiteral("0"), dislikeCell);
+    m_dislikeCountLabel->setObjectName("InteractionCount");
+    dislikeLayout->addWidget(m_dislikeBtn);
+    dislikeLayout->addWidget(m_dislikeCountLabel);
+    bar->addWidget(dislikeCell);
+
+    m_shareBtn = new QPushButton(articleCard);
+    ThemeIcons::applyIconButton(m_shareBtn, ThemeIcons::Kind::Share, QStringLiteral("分享给同事"));
     m_shareBtn->setEnabled(Session::instance().hasPermission("interaction:share"));
     connect(m_shareBtn, &QPushButton::clicked, this, &ArticleDetailPanel::openShare);
-    bar->addWidget(m_favBtn);
-    bar->addWidget(m_likeBtn);
-    bar->addWidget(m_dislikeBtn);
     bar->addWidget(m_shareBtn);
     bar->addStretch();
     articleLayout->addLayout(bar);
@@ -403,8 +429,8 @@ void ArticleDetailPanel::load() {
             rowLayout->setContentsMargins(0, 0, 0, 0);
             auto *nameLabel = new QLabel(QStringLiteral("%1（%2）").arg(fileName, humanSize(fileSize)), rowWidget);
             nameLabel->setObjectName("MutedLabel");
-            auto *dl = new QPushButton(QStringLiteral("下载"), rowWidget);
-            dl->setObjectName("GhostButton");
+            auto *dl = new QPushButton(rowWidget);
+            ThemeIcons::applyIconButton(dl, ThemeIcons::Kind::Download, QStringLiteral("下载附件"));
             connect(dl, &QPushButton::clicked, this, [this, aid, fileName]() {
                 downloadAttachment(aid, fileName);
             });
@@ -444,18 +470,24 @@ void ArticleDetailPanel::refreshState() {
 void ArticleDetailPanel::applyState(const QJsonObject &state) {
     m_favorited = state.value("favorited").toBool();
     m_myLikeType = state.value("myLikeType").toInt();
-    m_favBtn->setText(m_favorited ? QStringLiteral("★ 已收藏") : QStringLiteral("☆ 收藏"));
-    m_likeBtn->setText(QStringLiteral("👍 赞 %1").arg(asLong(state.value("likeCount"))));
-    m_dislikeBtn->setText(QStringLiteral("👎 踩 %1").arg(asLong(state.value("dislikeCount"))));
 
-    const auto setActive = [](QPushButton *btn, bool active) {
-        btn->setProperty("active", active);
-        btn->style()->unpolish(btn);
-        btn->style()->polish(btn);
+    ThemeIcons::setIcon(m_favBtn,
+                        m_favorited ? ThemeIcons::Kind::StarFilled : ThemeIcons::Kind::StarOutline);
+    ThemeIcons::setIcon(m_likeBtn,
+                        m_myLikeType == 1 ? ThemeIcons::Kind::ThumbUpFilled : ThemeIcons::Kind::ThumbUp);
+    ThemeIcons::setIcon(m_dislikeBtn,
+                        m_myLikeType == -1 ? ThemeIcons::Kind::ThumbDownFilled : ThemeIcons::Kind::ThumbDown);
+
+    m_likeCountLabel->setText(QString::number(asLong(state.value("likeCount"))));
+    m_dislikeCountLabel->setText(QString::number(asLong(state.value("dislikeCount"))));
+
+    const auto setCountActive = [](QLabel *label, bool active) {
+        label->setProperty("active", active);
+        label->style()->unpolish(label);
+        label->style()->polish(label);
     };
-    setActive(m_favBtn, m_favorited);
-    setActive(m_likeBtn, m_myLikeType == 1);
-    setActive(m_dislikeBtn, m_myLikeType == -1);
+    setCountActive(m_likeCountLabel, m_myLikeType == 1);
+    setCountActive(m_dislikeCountLabel, m_myLikeType == -1);
 }
 
 void ArticleDetailPanel::toggleFavorite() {

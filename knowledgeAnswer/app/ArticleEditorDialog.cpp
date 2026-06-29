@@ -1,6 +1,8 @@
 #include "app/ArticleEditorDialog.h"
 
 #include "common/TableStyle.h"
+#include "common/ComboStyle.h"
+#include "common/ThemeIcons.h"
 #include "core/auth/Session.h"
 #include "core/network/ApiClient.h"
 #include "core/notify/Notify.h"
@@ -100,6 +102,8 @@ void ArticleEditorDialog::buildUi() {
         m_type->addItem(QString::fromUtf8(opt.label), QString::fromLatin1(opt.code));
     }
     form->addRow(QStringLiteral("类型"), m_type);
+    ComboStyle::polish(m_category);
+    ComboStyle::polish(m_type);
 
     m_summary = new QLineEdit(this);
     m_summary->setPlaceholderText(QStringLiteral("一句话摘要（可选）"));
@@ -181,12 +185,12 @@ void ArticleEditorDialog::buildUi() {
     root->addWidget(m_attachTable);
 
     auto *attachBar = new QHBoxLayout();
-    m_attachUpload = new QPushButton(QStringLiteral("上传附件"), this);
-    m_attachDownload = new QPushButton(QStringLiteral("下载"), this);
-    m_attachDelete = new QPushButton(QStringLiteral("删除附件"), this);
-    m_attachUpload->setObjectName("GhostButton");
-    m_attachDownload->setObjectName("GhostButton");
-    m_attachDelete->setObjectName("GhostButton");
+    m_attachUpload = new QPushButton(this);
+    m_attachDownload = new QPushButton(this);
+    m_attachDelete = new QPushButton(this);
+    ThemeIcons::applyIconButton(m_attachUpload, ThemeIcons::Kind::Upload, QStringLiteral("上传附件"));
+    ThemeIcons::applyIconButton(m_attachDownload, ThemeIcons::Kind::Download, QStringLiteral("下载附件"));
+    ThemeIcons::applyIconButton(m_attachDelete, ThemeIcons::Kind::Trash, QStringLiteral("删除附件"));
     attachBar->addWidget(m_attachUpload);
     attachBar->addWidget(m_attachDownload);
     attachBar->addWidget(m_attachDelete);

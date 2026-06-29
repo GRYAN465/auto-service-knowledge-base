@@ -10,12 +10,15 @@ public final class TextUtils {
     private TextUtils() {
     }
 
-    /** 去除 HTML 标签与常见实体，压缩空白。 */
+    /** 去除 HTML 标签、style/script 块与常见实体，压缩空白。 */
     public static String stripHtml(String html) {
         if (!StringUtils.hasText(html)) {
             return "";
         }
-        String text = html.replaceAll("<[^>]+>", " ")
+        String text = html
+                .replaceAll("(?is)<style[^>]*>.*?</style>", " ")
+                .replaceAll("(?is)<script[^>]*>.*?</script>", " ")
+                .replaceAll("<[^>]+>", " ")
                 .replace("&nbsp;", " ")
                 .replace("&amp;", "&")
                 .replace("&lt;", "<")
@@ -25,10 +28,13 @@ public final class TextUtils {
         return text;
     }
 
-    /** 取正文预览：优先 content，否则 summary，默认 20 字。 */
+    /** 取正文预览：优先 summary（纯文本摘要），否则剥离 content 中的 HTML/CSS。 */
     public static String contentPreview(String content, String summary, int maxLen) {
-        String raw = StringUtils.hasText(content) ? content : summary;
+        String raw = StringUtils.hasText(summary) ? summary : content;
         String text = stripHtml(raw);
+        if (!StringUtils.hasText(text) && StringUtils.hasText(content)) {
+            text = stripHtml(content);
+        }
         if (text.length() <= maxLen) {
             return text;
         }

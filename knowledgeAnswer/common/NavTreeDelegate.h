@@ -10,6 +10,7 @@ class NavTreeDelegate : public QStyledItemDelegate {
 
 public:
     static constexpr int NavItemKindRole = Qt::UserRole + 2;
+    static constexpr int NavIconPathRole = Qt::UserRole + 3;
 
     explicit NavTreeDelegate(QObject *parent = nullptr);
 

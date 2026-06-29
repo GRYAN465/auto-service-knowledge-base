@@ -1,6 +1,7 @@
 #include "app/QaPage.h"
 
 #include "app/ArticleDetailDialog.h"
+#include "common/ThemeIcons.h"
 #include "core/network/ApiClient.h"
 #include "core/notify/Notify.h"
 
@@ -303,12 +304,10 @@ void QaPage::addAnswerBubble(const QString &answer, const QString &mode,
         auto *fl = new QHBoxLayout(fbRow);
         fl->setContentsMargins(0, 0, 0, 0);
         fl->setSpacing(6);
-        auto *up = new QPushButton(QStringLiteral("👍 有用"), fbRow);
-        auto *down = new QPushButton(QStringLiteral("👎 没用"), fbRow);
-        up->setObjectName("GhostButton");
-        down->setObjectName("GhostButton");
-        up->setCursor(Qt::PointingHandCursor);
-        down->setCursor(Qt::PointingHandCursor);
+        auto *up = new QPushButton(fbRow);
+        auto *down = new QPushButton(fbRow);
+        ThemeIcons::applyIconButton(up, ThemeIcons::Kind::ThumbUp, QStringLiteral("回答有用"));
+        ThemeIcons::applyIconButton(down, ThemeIcons::Kind::ThumbDown, QStringLiteral("回答没用"));
         fl->addWidget(up);
         fl->addWidget(down);
         fl->addStretch();
@@ -346,11 +345,17 @@ void QaPage::sendFeedback(qint64 messageId, bool helpful, QPushButton *up, QPush
         }
         if (upP) {
             upP->setEnabled(false);
-            if (helpful) upP->setText(QStringLiteral("👍 已反馈"));
+            if (helpful) {
+                ThemeIcons::setIcon(upP, ThemeIcons::Kind::ThumbUpFilled);
+                upP->setToolTip(QStringLiteral("已反馈：有用"));
+            }
         }
         if (downP) {
             downP->setEnabled(false);
-            if (!helpful) downP->setText(QStringLiteral("👎 已反馈"));
+            if (!helpful) {
+                ThemeIcons::setIcon(downP, ThemeIcons::Kind::ThumbDownFilled);
+                downP->setToolTip(QStringLiteral("已反馈：没用"));
+            }
         }
         self->setStatus(QStringLiteral("感谢反馈！"));
     });

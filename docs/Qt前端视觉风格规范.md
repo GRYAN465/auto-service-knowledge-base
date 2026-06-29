@@ -4,7 +4,7 @@
 > 主题文件：`resources/styles/app.qss`  
 > 加载入口：`main.cpp`（Fusion 风格 + 浅色调色板 + 全局 QSS）  
 > 设计参考：花笺笔记类暖色极简界面  
-> 最近更新：2026-06-24（v1.3 导航/FeedCard 半透明柔化、欢迎横幅黄绿渐变）
+> 最近更新：2026-06-23（v1.4 图标按钮 IconButton、互动计数标签）
 
 ---
 
@@ -18,6 +18,7 @@
 | 正文高对比 | 正文 `#000000`，次要信息 `#4A4A4A` / `#757575` |
 | 分区可辨 | **导航米黄 `#F3EDE4` 与主背景 `#FEFEFE` 有明显温差** |
 | 交互柔化 | 导航 hover/选中用**半透明叠加**，避免黄绿强对比；FeedCard hover 轻暖、不用饱和绿边 |
+| 图标优先 | 刷新、收藏、点赞/点踩、分享、返回、附件操作等**高频轻操作**用 `#IconButton` 无边框图标，文字保留 tooltip |
 | 样式集中 | **优先改 `app.qss`**，控件用 `objectName` 挂接，避免页面内硬编码颜色 |
 
 ---
@@ -146,8 +147,33 @@ hover   rgba(254,254,254,72) 半透明白雾
 
 | objectName | 场景 | 常态 | 激活/特殊 |
 |---|---|---|---|
-| `PrimaryButton` | 主操作 | 底 #9AA69D + 白字 | hover #8A9690 |
-| `GhostButton` | 次要操作 | 底 #F1EEE8 + 黑字 | `[active="true"]` → `rgba(154,166,157,0.18)` 底 + #6B7F74 字 |
+| `PrimaryButton` | 主操作（保存、提交等） | 底 #9AA69D + 白字 | hover #8A9690 |
+| `GhostButton` | 次要文字操作 | 底 #F1EEE8 + 黑字 | `[active="true"]` → `rgba(154,166,157,0.18)` 底 + #6B7F74 字 |
+| `IconButton` | 图标轻操作（刷新、互动、返回、附件） | 透明底 + 主题绿 SVG | hover `rgba(154,166,157,0.14)`；`[active="true"]` 浅绿底 + 实心图标 |
+| `#InteractionCount` | 点赞/点踩计数 | #757575 13px | `[active="true"]` → #6B7F74 semibold |
+
+**IconButton 接入（`common/ThemeIcons`）**
+
+```cpp
+ThemeIcons::applyIconButton(btn, ThemeIcons::Kind::Refresh, QStringLiteral("刷新当前页面"));
+// 状态切换（收藏/点赞已选）：
+ThemeIcons::setIcon(btn, ThemeIcons::Kind::StarFilled);
+btn->setProperty("active", true);
+btn->style()->unpolish(btn);
+btn->style()->polish(btn);
+```
+
+| 图标 Kind | SVG | 典型场景 |
+|---|---|---|
+| `Refresh` | `refresh.svg` | 顶栏刷新 |
+| `StarOutline` / `StarFilled` | `star-*.svg` | 收藏 / 取消收藏 |
+| `ThumbUp` / `ThumbUpFilled` | `thumb-up*.svg` | 点赞、问答反馈 |
+| `ThumbDown` / `ThumbDownFilled` | `thumb-down*.svg` | 点踩、问答反馈 |
+| `Share` | `share.svg` | 分享给同事 |
+| `Back` | `back.svg` | 详情/个人页返回 |
+| `Download` / `Upload` / `Trash` | `download/upload/trash.svg` | 附件下载/上传/删除 |
+
+图标描边/填充色：**#9AA69D**（`text-accent`）；激活实心：**#6B7F74**（`text-accent-dark`）。尺寸默认 20×20px，按钮热区 32×32px（含 6px 内边距）。
 
 ### 5.3 卡片与区块
 
@@ -217,6 +243,7 @@ hover   rgba(254,254,254,72) 半透明白雾
 | v1.1 | 导航 `#F3EDE4`、表格选中 `#E5DDD0`、分隔线 `#E0D9CE` |
 | v1.2 | 表格 `#F0EBE4`；导航实色 `#DFEBE3` + `#5A6F63` |
 | **v1.3** | 导航改**半透明叠加**+黑字；FeedCard hover 柔化；WelcomeBanner **黄绿三色渐变**；评论区**透明底 + hover #FAF8F4** |
+| **v1.4** | 新增 **`IconButton`** 无边框图标按钮 + **`#InteractionCount`**；`ThemeIcons` 统一 SVG；详情互动/顶栏刷新/问答反馈/附件操作改为图标 |
 
 ---
 
@@ -229,6 +256,8 @@ hover   rgba(254,254,254,72) 半透明白雾
 | 3 | 首页欢迎横幅为**黄→绿渐变** |
 | 4 | 表格选中 `#F0EBE4` 仍清晰可辨 |
 | 5 | 侧栏 `#F3EDE4` 与主区 `#FEFEFE` 可区分 |
+| 6 | 顶栏刷新、详情互动、问答反馈为**无边框绿图标**，tooltip 可读 |
+| 7 | 点赞/点踩**数字与图标分离**，选中态图标实心 + 计数 `#6B7F74` |
 
 ---
 
@@ -236,7 +265,9 @@ hover   rgba(254,254,254,72) 半透明白雾
 
 | 文件 | 说明 |
 |---|---|
-| `resources/styles/app.qss` | 主题 QSS |
+| `resources/styles/app.qss` | 主题 QSS（含 `#IconButton`、`#InteractionCount`） |
+| `common/ThemeIcons.h/.cpp` | 图标 Kind 枚举与 `applyIconButton` |
+| `resources/icons/*.svg` | 主题绿 SVG 资源 |
 | `common/NavTreeDelegate.cpp` | 导航半透明绘制 |
 | `main.cpp` | Fusion + QPalette |
 

@@ -1,6 +1,7 @@
 #include "app/PinTagsEditDialog.h"
 
-#include <QCheckBox>
+#include <QFrame>
+#include <QGridLayout>
 #include <QHBoxLayout>
 #include <QJsonObject>
 #include <QPushButton>
@@ -9,11 +10,17 @@
 
 namespace kb {
 
+namespace {
+
+constexpr int kGridColumns = 5;
+
+} // namespace
+
 PinTagsEditDialog::PinTagsEditDialog(const QJsonArray &allTags, const QVector<qint64> &pinned,
                                      QWidget *parent)
     : QDialog(parent) {
     setWindowTitle(QStringLiteral("编辑常用标签"));
-    resize(480, 420);
+    resize(520, 420);
 
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(24, 20, 24, 20);
@@ -23,20 +30,29 @@ PinTagsEditDialog::PinTagsEditDialog(const QJsonArray &allTags, const QVector<qi
     scroll->setWidgetResizable(true);
     scroll->setFrameShape(QFrame::NoFrame);
     auto *host = new QWidget(scroll);
-    auto *list = new QVBoxLayout(host);
-    list->setSpacing(8);
+    auto *grid = new QGridLayout(host);
+    grid->setContentsMargins(0, 0, 0, 0);
+    grid->setHorizontalSpacing(10);
+    grid->setVerticalSpacing(10);
 
+    int row = 0;
+    int col = 0;
     for (const QJsonValue &v : allTags) {
         const QJsonObject t = v.toObject();
         const qint64 id = static_cast<qint64>(t.value("id").toDouble());
-        auto *box = new QCheckBox(t.value("name").toString(), host);
-        box->setProperty("tagId", id);
-        if (pinned.contains(id)) {
-            box->setChecked(true);
+        auto *chip = new QPushButton(t.value("name").toString(), host);
+        chip->setObjectName("TagPickerChip");
+        chip->setCheckable(true);
+        chip->setChecked(pinned.contains(id));
+        chip->setCursor(Qt::PointingHandCursor);
+        chip->setProperty("tagId", id);
+        chip->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
+        grid->addWidget(chip, row, col);
+        if (++col >= kGridColumns) {
+            col = 0;
+            ++row;
         }
-        list->addWidget(box);
     }
-    list->addStretch();
     scroll->setWidget(host);
     root->addWidget(scroll, 1);
 
@@ -49,9 +65,9 @@ PinTagsEditDialog::PinTagsEditDialog(const QJsonArray &allTags, const QVector<qi
     connect(cancel, &QPushButton::clicked, this, &QDialog::reject);
     connect(ok, &QPushButton::clicked, this, [this, host]() {
         m_selected.clear();
-        for (QCheckBox *box : host->findChildren<QCheckBox *>()) {
-            if (box->isChecked()) {
-                m_selected.append(box->property("tagId").toLongLong());
+        for (QPushButton *chip : host->findChildren<QPushButton *>()) {
+            if (chip->objectName() == QStringLiteral("TagPickerChip") && chip->isChecked()) {
+                m_selected.append(chip->property("tagId").toLongLong());
             }
         }
         accept();

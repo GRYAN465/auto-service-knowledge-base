@@ -7,16 +7,36 @@
 #include <QJsonValue>
 #include <QLabel>
 #include <QMouseEvent>
+#include <QRegularExpression>
 #include <QVBoxLayout>
 
 namespace kb {
 
 namespace {
 
+QString stripHtmlPreview(const QString &raw) {
+    QString text = raw;
+    text.remove(QRegularExpression(QStringLiteral("<style[^>]*>.*?</style>"),
+                                 QRegularExpression::CaseInsensitiveOption
+                                     | QRegularExpression::DotMatchesEverythingOption));
+    text.remove(QRegularExpression(QStringLiteral("<script[^>]*>.*?</script>"),
+                                 QRegularExpression::CaseInsensitiveOption
+                                     | QRegularExpression::DotMatchesEverythingOption));
+    text.remove(QRegularExpression(QStringLiteral("<[^>]+>")));
+    text.replace(QStringLiteral("&nbsp;"), QStringLiteral(" "));
+    text.replace(QStringLiteral("&amp;"), QStringLiteral("&"));
+    text = text.simplified();
+    return text;
+}
+
 QString previewText(const QJsonObject &o) {
-    QString text = o.value("contentPreview").toString();
+    QString text = o.value("summary").toString().trimmed();
     if (text.isEmpty()) {
-        text = o.value("summary").toString();
+        text = o.value("contentPreview").toString().trimmed();
+    }
+    text = stripHtmlPreview(text);
+    if (text.isEmpty()) {
+        return {};
     }
     if (text.length() > 20) {
         text = text.left(20) + QStringLiteral("…");
@@ -47,14 +67,18 @@ ArticleFeedCard::ArticleFeedCard(const QJsonObject &article, QWidget *parent)
         layout->addWidget(authorLabel);
     }
 
-    auto *preview = new QLabel(previewText(article), this);
-    preview->setObjectName("MutedLabel");
-    preview->setWordWrap(true);
-    layout->addWidget(preview);
+    const QString previewStr = previewText(article);
+    if (!previewStr.isEmpty()) {
+        auto *preview = new QLabel(previewStr, this);
+        preview->setObjectName("MutedLabel");
+        preview->setWordWrap(true);
+        layout->addWidget(preview);
+    }
 
     const QJsonArray tags = article.value("tags").toArray();
     if (!tags.isEmpty()) {
         auto *tagRow = new QWidget(this);
+        tagRow->setAutoFillBackground(false);
         auto *tagLayout = new QHBoxLayout(tagRow);
         tagLayout->setContentsMargins(0, 0, 0, 0);
         tagLayout->setSpacing(6);

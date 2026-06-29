@@ -21,7 +21,9 @@
 #include <QPushButton>
 #include <QScrollArea>
 #include <QScrollBar>
+#include <QSizePolicy>
 #include <QStackedWidget>
+#include <QtMath>
 #include <QStyle>
 #include <QUrl>
 #include <QVBoxLayout>
@@ -49,6 +51,24 @@ void SearchPage::refreshPage() {
         m_profile->reload();
     }
 }
+
+namespace {
+
+/** 横向标签条：layout 固定为内容宽度，供 QScrollArea 横向滚动。 */
+class TagStripWidget : public QWidget {
+public:
+    explicit TagStripWidget(QWidget *parent = nullptr) : QWidget(parent) {
+        setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
+    }
+    QSize sizeHint() const override {
+        if (layout()) {
+            return layout()->sizeHint();
+        }
+        return {64, 30};
+    }
+};
+
+} // namespace
 
 void SearchPage::buildUi() {
     auto *outer = new QVBoxLayout(this);
@@ -96,14 +116,31 @@ void SearchPage::buildUi() {
 
     auto *tagCard = new QFrame(m_listPage);
     tagCard->setObjectName("SectionCard");
-    auto *tagCardLayout = new QVBoxLayout(tagCard);
-    tagCardLayout->setContentsMargins(16, 14, 16, 14);
-    tagCardLayout->setSpacing(10);
-    auto *tagHead = new QHBoxLayout();
-    auto *tagTitle = new QLabel(QStringLiteral("常用标签"), tagCard);
-    tagTitle->setObjectName("SectionTitle");
+    auto *tagRow = new QHBoxLayout(tagCard);
+    tagRow->setContentsMargins(10, 6, 10, 6);
+    tagRow->setSpacing(8);
+
+    m_tagScroll = new QScrollArea(tagCard);
+    m_tagScroll->setObjectName("TagFilterScroll");
+    m_tagScroll->setWidgetResizable(false);
+    m_tagScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    m_tagScroll->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_tagScroll->setFrameShape(QFrame::NoFrame);
+    m_tagScroll->setFixedHeight(40);
+    m_tagScroll->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
+    m_tagBtnHost = new TagStripWidget(m_tagScroll);
+    m_tagBtnHost->setFixedHeight(32);
+    m_tagBtnRow = new QHBoxLayout(m_tagBtnHost);
+    m_tagBtnRow->setContentsMargins(0, 0, 0, 0);
+    m_tagBtnRow->setSpacing(6);
+    m_tagBtnRow->setSizeConstraint(QLayout::SetFixedSize);
+    m_tagScroll->setWidget(m_tagBtnHost);
+    tagRow->addWidget(m_tagScroll, 1);
+
     auto *editTags = new QPushButton(QStringLiteral("编辑"), tagCard);
     editTags->setObjectName("GhostButton");
+    editTags->setFixedHeight(28);
     connect(editTags, &QPushButton::clicked, this, [this]() {
         const qint64 uid = Session::instance().user().id;
         QVector<qint64> pinned = PinnedTagsStore::instance().pinnedTagIds(uid);
@@ -113,17 +150,9 @@ void SearchPage::buildUi() {
             rebuildTagButtons();
         }
     });
-    tagHead->addWidget(tagTitle);
-    tagHead->addStretch();
-    tagHead->addWidget(editTags);
-    tagCardLayout->addLayout(tagHead);
-
-    auto *tagBtnHost = new QWidget(tagCard);
-    m_tagBtnRow = new QHBoxLayout(tagBtnHost);
-    m_tagBtnRow->setContentsMargins(0, 0, 0, 0);
-    m_tagBtnRow->setSpacing(8);
-    tagCardLayout->addWidget(tagBtnHost);
+    tagRow->addWidget(editTags);
     root->addWidget(tagCard);
+    rebuildTagButtons();
 
     m_feedScroll = new QScrollArea(m_listPage);
     m_feedScroll->setWidgetResizable(true);
@@ -179,36 +208,49 @@ void SearchPage::loadTagOptions() {
 
 void SearchPage::rebuildTagButtons() {
     while (QLayoutItem *item = m_tagBtnRow->takeAt(0)) {
-        if (QWidget *w = item->widget()) w->deleteLater();
+        if (QWidget *w = item->widget()) {
+            w->deleteLater();
+        }
         delete item;
     }
-    auto *allBtn = new QPushButton(QStringLiteral("全部"), m_listPage);
-    allBtn->setObjectName(m_tagFilter == 0 ? "PrimaryButton" : "GhostButton");
-    connect(allBtn, &QPushButton::clicked, this, [this]() {
+
+    const auto addChip = [this](const QString &text, bool active, const auto &onClick) {
+        auto *btn = new QPushButton(text, m_tagBtnHost);
+        btn->setObjectName(QStringLiteral("TagFilterChip"));
+        btn->setCheckable(true);
+        btn->setChecked(active);
+        btn->setCursor(Qt::PointingHandCursor);
+        btn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        btn->setToolTip(text);
+        connect(btn, &QPushButton::clicked, this, onClick);
+        m_tagBtnRow->addWidget(btn);
+    };
+
+    addChip(QStringLiteral("全部"), m_tagFilter == 0, [this]() {
         m_tagFilter = 0;
         rebuildTagButtons();
         resetFeed();
     });
-    m_tagBtnRow->addWidget(allBtn);
 
     const qint64 uid = Session::instance().user().id;
-    QVector<qint64> pinned = PinnedTagsStore::instance().pinnedTagIds(uid);
+    const QVector<qint64> pinned = PinnedTagsStore::instance().pinnedTagIds(uid);
     for (const QJsonValue &v : m_allTags) {
         const QJsonObject t = v.toObject();
         const qint64 id = static_cast<qint64>(t.value("id").toDouble());
         if (!pinned.contains(id)) {
             continue;
         }
-        auto *btn = new QPushButton(t.value("name").toString(), m_listPage);
-        btn->setObjectName(m_tagFilter == id ? "PrimaryButton" : "GhostButton");
-        connect(btn, &QPushButton::clicked, this, [this, id]() {
+        addChip(t.value("name").toString(), m_tagFilter == id, [this, id]() {
             m_tagFilter = id;
             rebuildTagButtons();
             resetFeed();
         });
-        m_tagBtnRow->addWidget(btn);
     }
-    m_tagBtnRow->addStretch();
+
+    m_tagBtnHost->adjustSize();
+    const QSize strip = m_tagBtnHost->sizeHint();
+    m_tagBtnHost->setFixedSize(qMax(strip.width(), 64), 32);
+    m_tagScroll->horizontalScrollBar()->setValue(0);
 }
 
 void SearchPage::setSortHot(bool hot) {

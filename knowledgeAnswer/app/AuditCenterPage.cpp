@@ -7,6 +7,7 @@
 #include "core/notify/Notify.h"
 
 #include <QAbstractItemView>
+#include <QFrame>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QInputDialog>
@@ -33,22 +34,6 @@ void AuditCenterPage::buildUi() {
     root->setContentsMargins(24, 20, 24, 24);
     root->setSpacing(14);
 
-    auto *toolbar = new QHBoxLayout();
-    m_pass = new QPushButton(QStringLiteral("通过"), this);
-    m_reject = new QPushButton(QStringLiteral("驳回"), this);
-    m_pass->setObjectName("PrimaryButton");
-    m_reject->setObjectName("GhostButton");
-    toolbar->addWidget(m_pass);
-    toolbar->addWidget(m_reject);
-    toolbar->addStretch();
-    root->addLayout(toolbar);
-
-    const bool canAudit = Session::instance().hasPermission(QStringLiteral("knowledge:article:audit"));
-    m_pass->setEnabled(canAudit);
-    m_reject->setEnabled(canAudit);
-    connect(m_pass, &QPushButton::clicked, this, &AuditCenterPage::pass);
-    connect(m_reject, &QPushButton::clicked, this, &AuditCenterPage::reject);
-
     m_status = new QLabel(this);
     m_status->setObjectName("StatusLabel");
     root->addWidget(m_status);
@@ -61,15 +46,41 @@ void AuditCenterPage::buildUi() {
     TableStyle::configureTitleTable(m_table, 0);
     splitter->addWidget(m_table);
 
-    m_preview = new QTextEdit(splitter);
-    m_preview->setObjectName("DataTable");
+    auto *detailPanel = new QFrame(splitter);
+    detailPanel->setObjectName("SectionCard");
+    auto *detailLayout = new QVBoxLayout(detailPanel);
+    detailLayout->setContentsMargins(16, 16, 16, 16);
+    detailLayout->setSpacing(12);
+
+    m_preview = new QTextEdit(detailPanel);
+    m_preview->setObjectName("ArticleContent");
     m_preview->setReadOnly(true);
     m_preview->setPlaceholderText(QStringLiteral("选择左侧知识查看正文"));
-    splitter->addWidget(m_preview);
+    detailLayout->addWidget(m_preview, 1);
+
+    auto *actionBar = new QHBoxLayout();
+    actionBar->setSpacing(10);
+    m_pass = new QPushButton(QStringLiteral("通过"), detailPanel);
+    m_reject = new QPushButton(QStringLiteral("驳回"), detailPanel);
+    m_pass->setObjectName("PrimaryButton");
+    m_reject->setObjectName("GhostButton");
+    m_pass->setMinimumWidth(88);
+    m_reject->setMinimumWidth(88);
+    actionBar->addStretch();
+    actionBar->addWidget(m_pass);
+    actionBar->addWidget(m_reject);
+    detailLayout->addLayout(actionBar);
+
+    splitter->addWidget(detailPanel);
     splitter->setStretchFactor(0, 3);
     splitter->setStretchFactor(1, 2);
     root->addWidget(splitter, 1);
 
+    const bool canAudit = Session::instance().hasPermission(QStringLiteral("knowledge:article:audit"));
+    m_pass->setEnabled(canAudit);
+    m_reject->setEnabled(canAudit);
+    connect(m_pass, &QPushButton::clicked, this, &AuditCenterPage::pass);
+    connect(m_reject, &QPushButton::clicked, this, &AuditCenterPage::reject);
     connect(m_table, &QTableWidget::itemSelectionChanged, this, &AuditCenterPage::previewSelected);
 }
 
@@ -108,6 +119,7 @@ void AuditCenterPage::refresh() {
 void AuditCenterPage::previewSelected() {
     const qint64 id = selectedId();
     if (id <= 0) {
+        m_preview->clear();
         return;
     }
     ApiClient::instance().get("/knowledge/article/" + QString::number(id), [this](const ApiResponse &r) {

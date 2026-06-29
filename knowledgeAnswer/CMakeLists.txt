@@ -20,9 +20,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Network)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Network Charts)
 
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Network)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Network Charts)
 
 
 
@@ -98,6 +98,11 @@ set(PROJECT_SOURCES
 
         common/TableStyle.h         common/TableStyle.cpp
         common/NavTreeDelegate.h    common/NavTreeDelegate.cpp
+        common/ThemeIcons.h         common/ThemeIcons.cpp
+        common/NavIcons.h           common/NavIcons.cpp
+        common/ComboStyle.h         common/ComboStyle.cpp
+        common/ChartTheme.h         common/ChartTheme.cpp
+        common/ChartCard.h          common/ChartCard.cpp
 
 
 
@@ -169,6 +174,7 @@ target_link_libraries(knowledgeAnswer PRIVATE
 
     Qt${QT_VERSION_MAJOR}::Network
 
+    Qt${QT_VERSION_MAJOR}::Charts
 
 )
 

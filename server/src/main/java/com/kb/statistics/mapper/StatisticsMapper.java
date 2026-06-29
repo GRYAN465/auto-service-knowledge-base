@@ -1,6 +1,8 @@
 package com.kb.statistics.mapper;
 
 import com.kb.statistics.dto.ArticleTotalsVO;
+import com.kb.statistics.dto.CategoryRankVO;
+import com.kb.statistics.dto.DateCountVO;
 import com.kb.statistics.dto.HotKeywordVO;
 import com.kb.statistics.dto.NameCountVO;
 import org.apache.ibatis.annotations.Param;
@@ -51,4 +53,75 @@ public interface StatisticsMapper {
             + "LIMIT #{limit}"
             + "</script>")
     List<HotKeywordVO> hotKeywords(@Param("since") LocalDateTime since, @Param("limit") int limit);
+
+    @Select("SELECT DATE_FORMAT(create_time, '%Y-%m-%d') AS `date`, COUNT(*) AS `count` "
+            + "FROM kb_view_log WHERE create_time >= #{since} "
+            + "GROUP BY DATE_FORMAT(create_time, '%Y-%m-%d') ORDER BY `date`")
+    List<DateCountVO> dailyViews(@Param("since") LocalDateTime since);
+
+    @Select("SELECT DATE_FORMAT(create_time, '%Y-%m-%d') AS `date`, COUNT(*) AS `count` "
+            + "FROM kb_search_log WHERE create_time >= #{since} "
+            + "GROUP BY DATE_FORMAT(create_time, '%Y-%m-%d') ORDER BY `date`")
+    List<DateCountVO> dailySearches(@Param("since") LocalDateTime since);
+
+    @Select("SELECT DATE_FORMAT(create_time, '%Y-%m-%d') AS `date`, COUNT(*) AS `count` "
+            + "FROM kb_article WHERE deleted = 0 AND create_time >= #{since} "
+            + "GROUP BY DATE_FORMAT(create_time, '%Y-%m-%d') ORDER BY `date`")
+    List<DateCountVO> dailyNewArticles(@Param("since") LocalDateTime since);
+
+    @Select("SELECT DATE_FORMAT(online_time, '%Y-%m-%d') AS `date`, COUNT(*) AS `count` "
+            + "FROM kb_article WHERE deleted = 0 AND status = 'ONLINE' "
+            + "AND online_time IS NOT NULL AND online_time >= #{since} "
+            + "GROUP BY DATE_FORMAT(online_time, '%Y-%m-%d') ORDER BY `date`")
+    List<DateCountVO> dailyOnlineArticles(@Param("since") LocalDateTime since);
+
+    @Select("SELECT c.id AS categoryId, c.name AS categoryName, COUNT(a.id) AS articleCount, "
+            + "COALESCE(SUM(a.view_count), 0) AS viewTotal "
+            + "FROM kb_category c "
+            + "INNER JOIN kb_article a ON a.category_id = c.id AND a.deleted = 0 "
+            + "GROUP BY c.id, c.name ORDER BY articleCount DESC, viewTotal DESC LIMIT #{limit}")
+    List<CategoryRankVO> categoryRank(@Param("limit") int limit);
+
+    @Select("SELECT audit_status AS name, COUNT(*) AS `count` FROM kb_audit_record "
+            + "WHERE audit_status IS NOT NULL AND audit_time IS NOT NULL "
+            + "GROUP BY audit_status ORDER BY `count` DESC")
+    List<NameCountVO> auditResultDist();
+
+    @Select("SELECT DATE_FORMAT(create_time, '%Y-%m-%d') AS `date`, COUNT(*) AS `count` "
+            + "FROM qa_session WHERE deleted = 0 AND create_time >= #{since} "
+            + "GROUP BY DATE_FORMAT(create_time, '%Y-%m-%d') ORDER BY `date`")
+    List<DateCountVO> dailyQaSessions(@Param("since") LocalDateTime since);
+
+    @Select("SELECT COUNT(*) FROM qa_session WHERE deleted = 0 AND create_time >= #{since}")
+    Long qaSessionCount(@Param("since") LocalDateTime since);
+
+    @Select("SELECT COUNT(*) FROM qa_message WHERE create_time >= #{since}")
+    Long qaMessageCount(@Param("since") LocalDateTime since);
+
+    @Select("SELECT COUNT(*) FROM qa_feedback WHERE helpful = 1 AND create_time >= #{since}")
+    Long qaHelpfulCount(@Param("since") LocalDateTime since);
+
+    @Select("SELECT COUNT(*) FROM qa_feedback WHERE helpful = 0 AND create_time >= #{since}")
+    Long qaUnhelpfulCount(@Param("since") LocalDateTime since);
+
+    @Select("SELECT DATE_FORMAT(create_time, '%Y-%m') AS `date`, COUNT(*) AS `count` "
+            + "FROM kb_view_log WHERE create_time >= #{start} AND create_time < #{end} "
+            + "GROUP BY DATE_FORMAT(create_time, '%Y-%m') ORDER BY `date`")
+    List<DateCountVO> monthlyViews(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    @Select("SELECT DATE_FORMAT(create_time, '%Y-%m') AS `date`, COUNT(*) AS `count` "
+            + "FROM kb_search_log WHERE create_time >= #{start} AND create_time < #{end} "
+            + "GROUP BY DATE_FORMAT(create_time, '%Y-%m') ORDER BY `date`")
+    List<DateCountVO> monthlySearches(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    @Select("SELECT DATE_FORMAT(create_time, '%Y-%m') AS `date`, COUNT(*) AS `count` "
+            + "FROM kb_article WHERE deleted = 0 AND create_time >= #{start} AND create_time < #{end} "
+            + "GROUP BY DATE_FORMAT(create_time, '%Y-%m') ORDER BY `date`")
+    List<DateCountVO> monthlyNewArticles(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    @Select("SELECT DATE_FORMAT(online_time, '%Y-%m') AS `date`, COUNT(*) AS `count` "
+            + "FROM kb_article WHERE deleted = 0 AND status = 'ONLINE' "
+            + "AND online_time IS NOT NULL AND online_time >= #{start} AND online_time < #{end} "
+            + "GROUP BY DATE_FORMAT(online_time, '%Y-%m') ORDER BY `date`")
+    List<DateCountVO> monthlyOnlineArticles(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 }

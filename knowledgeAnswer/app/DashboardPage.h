@@ -2,18 +2,19 @@
 
 #include "app/RefreshablePage.h"
 
+#include <QResizeEvent>
 #include <QWidget>
 
+class QFrame;
 class QLabel;
-class QTableWidget;
+class QHBoxLayout;
+class QScrollArea;
+class QVBoxLayout;
 
 namespace kb {
 
 /**
- * 首页仪表盘（路由 dashboard，目录「工作台」）：登录后的落地页，按角色自适应。
- *   - 所有角色：问候区 + 快捷入口。
- *   - statistics:view：概览指标卡 + 今日动态。
- *   - knowledge:search：推荐知识 TOP5（/knowledge/recommend/home）+ 热门 TOP5。
+ * 首页仪表盘（路由 dashboard）：问候 + 快捷入口 + 与我相关 KPI + 推荐/热门双栏。
  */
 class DashboardPage : public QWidget, public RefreshablePage {
     Q_OBJECT
@@ -28,26 +29,38 @@ signals:
 
 private:
     void buildUi();
-    void loadOverview();
+    void loadMyKpi();
     void loadRecommendations();
     void loadHotArticles();
-    void openArticleDetail(QTableWidget *table);
+    void openArticle(qint64 articleId);
     void setStatus(const QString &text, bool error = false);
+    void syncHotPanelHeight();
     static QString pinnedTagIdsParam();
+
+    void resizeEvent(QResizeEvent *event) override;
 
     QString m_title;
     bool m_canStats = false;
     bool m_canHotArticles = false;
+    bool m_kpiAdminMode = false;
 
     QLabel *m_status = nullptr;
+    QLabel *m_kpiSectionTitle = nullptr;
+    QLabel *m_kpiValues[4] = {};
+    QLabel *m_kpiCaptions[4] = {};
     QLabel *m_recommendHint = nullptr;
-    QLabel *m_cardTotal = nullptr;
-    QLabel *m_cardOnline = nullptr;
-    QLabel *m_cardPending = nullptr;
-    QLabel *m_cardDraft = nullptr;
-    QLabel *m_todayLine = nullptr;
-    QTableWidget *m_recommendArticles = nullptr;
-    QTableWidget *m_hotArticles = nullptr;
+    QScrollArea *m_quickScroll = nullptr;
+    QWidget *m_quickHost = nullptr;
+    QHBoxLayout *m_quickRow = nullptr;
+    QVBoxLayout *m_recommendFeed = nullptr;
+    QVBoxLayout *m_hotRankList = nullptr;
+    QWidget *m_leftCol = nullptr;
+    QFrame *m_rightCol = nullptr;
+    QScrollArea *m_hotScroll = nullptr;
+    QWidget *m_hotListHost = nullptr;
+    QWidget *m_contentRow = nullptr;
+
+    static constexpr int kHotFetchLimit = 15;
 };
 
 } // namespace kb

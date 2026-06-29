@@ -12,15 +12,23 @@ import com.kb.knowledge.search.mapper.KbSearchLogMapper;
 import com.kb.knowledge.search.mapper.KbViewLogMapper;
 import com.kb.knowledge.tag.mapper.KbTagMapper;
 import com.kb.statistics.dto.ArticleTotalsVO;
+import com.kb.statistics.dto.AuditOverviewVO;
+import com.kb.statistics.dto.CategoryRankVO;
+import com.kb.statistics.dto.DateCountVO;
 import com.kb.statistics.dto.HotArticleVO;
 import com.kb.statistics.dto.HotKeywordVO;
+import com.kb.statistics.dto.NameCountVO;
 import com.kb.statistics.dto.OverviewVO;
+import com.kb.statistics.dto.QaOverviewVO;
+import com.kb.statistics.dto.TrendVO;
 import com.kb.statistics.mapper.StatisticsMapper;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -145,7 +153,132 @@ public class StatisticsService {
         return list == null ? Collections.emptyList() : list;
     }
 
+    // ---------------------------------------------------------------- 日趋势
+
+    public TrendVO trend(int days) {
+        int safeDays = clamp(days, 7, 90);
+        LocalDateTime since = LocalDate.now().minusDays(safeDays - 1L).atStartOfDay();
+        TrendVO vo = new TrendVO();
+        vo.setDays(safeDays);
+        vo.setGranularity("day");
+        vo.setViews(fillDailyGaps(statisticsMapper.dailyViews(since), safeDays));
+        vo.setSearches(fillDailyGaps(statisticsMapper.dailySearches(since), safeDays));
+        vo.setNewArticles(fillDailyGaps(statisticsMapper.dailyNewArticles(since), safeDays));
+        vo.setOnlineArticles(fillDailyGaps(statisticsMapper.dailyOnlineArticles(since), safeDays));
+        return vo;
+    }
+
+    public TrendVO trendMonthly(int year) {
+        int safeYear = year > 0 ? year : LocalDate.now().getYear();
+        LocalDateTime start = LocalDate.of(safeYear, 1, 1).atStartOfDay();
+        LocalDateTime end = LocalDate.of(safeYear + 1, 1, 1).atStartOfDay();
+        TrendVO vo = new TrendVO();
+        vo.setDays(12);
+        vo.setYear(safeYear);
+        vo.setGranularity("month");
+        vo.setViews(fillMonthlyGaps(safeYear, statisticsMapper.monthlyViews(start, end)));
+        vo.setSearches(fillMonthlyGaps(safeYear, statisticsMapper.monthlySearches(start, end)));
+        vo.setNewArticles(fillMonthlyGaps(safeYear, statisticsMapper.monthlyNewArticles(start, end)));
+        vo.setOnlineArticles(fillMonthlyGaps(safeYear, statisticsMapper.monthlyOnlineArticles(start, end)));
+        return vo;
+    }
+
+    // ---------------------------------------------------------------- 分类排行
+
+    public List<CategoryRankVO> categoryRank(int limit) {
+        int safeLimit = clamp(limit, 1, 20);
+        List<CategoryRankVO> list = statisticsMapper.categoryRank(safeLimit);
+        return list == null ? Collections.emptyList() : list;
+    }
+
+    // ---------------------------------------------------------------- 审核运营
+
+    public AuditOverviewVO auditOverview() {
+        AuditOverviewVO vo = new AuditOverviewVO();
+        vo.setPendingAudit(countByStatus(PENDING_AUDIT));
+        List<NameCountVO> dist = statisticsMapper.auditResultDist();
+        vo.setResultDist(dist == null ? Collections.emptyList() : dist);
+        long pass = 0;
+        long reject = 0;
+        if (dist != null) {
+            for (NameCountVO item : dist) {
+                if ("PASS".equals(item.getName())) {
+                    pass = item.getCount() == null ? 0 : item.getCount();
+                } else if ("REJECT".equals(item.getName())) {
+                    reject = item.getCount() == null ? 0 : item.getCount();
+                }
+            }
+        }
+        vo.setPassCount(pass);
+        vo.setRejectCount(reject);
+        long total = pass + reject;
+        vo.setPassRate(total > 0 ? (double) pass / total : null);
+        return vo;
+    }
+
+    // ---------------------------------------------------------------- 智能问答运营
+
+    public QaOverviewVO qaOverview(int days) {
+        int safeDays = clamp(days, 7, 90);
+        LocalDateTime since = LocalDate.now().minusDays(safeDays - 1L).atStartOfDay();
+        QaOverviewVO vo = new QaOverviewVO();
+        vo.setDays(safeDays);
+        Long sessions = statisticsMapper.qaSessionCount(since);
+        Long messages = statisticsMapper.qaMessageCount(since);
+        Long helpful = statisticsMapper.qaHelpfulCount(since);
+        Long unhelpful = statisticsMapper.qaUnhelpfulCount(since);
+        vo.setSessionTotal(sessions == null ? 0L : sessions);
+        vo.setMessageTotal(messages == null ? 0L : messages);
+        vo.setHelpfulCount(helpful == null ? 0L : helpful);
+        vo.setUnhelpfulCount(unhelpful == null ? 0L : unhelpful);
+        long fbTotal = vo.getHelpfulCount() + vo.getUnhelpfulCount();
+        vo.setHelpfulRate(fbTotal > 0 ? (double) vo.getHelpfulCount() / fbTotal : null);
+        vo.setSessionTrend(fillDailyGaps(statisticsMapper.dailyQaSessions(since), safeDays));
+        return vo;
+    }
+
     // ---------------------------------------------------------------- 私有辅助
+
+    private List<DateCountVO> fillDailyGaps(List<DateCountVO> rows, int days) {
+        Map<String, Long> map = new HashMap<>();
+        if (rows != null) {
+            for (DateCountVO row : rows) {
+                if (row.getDate() != null) {
+                    map.put(row.getDate(), row.getCount() == null ? 0L : row.getCount());
+                }
+            }
+        }
+        List<DateCountVO> out = new ArrayList<>(days);
+        LocalDate start = LocalDate.now().minusDays(days - 1L);
+        for (int i = 0; i < days; i++) {
+            LocalDate d = start.plusDays(i);
+            DateCountVO item = new DateCountVO();
+            item.setDate(d.toString());
+            item.setCount(map.getOrDefault(d.toString(), 0L));
+            out.add(item);
+        }
+        return out;
+    }
+
+    private List<DateCountVO> fillMonthlyGaps(int year, List<DateCountVO> rows) {
+        Map<String, Long> map = new HashMap<>();
+        if (rows != null) {
+            for (DateCountVO row : rows) {
+                if (row.getDate() != null) {
+                    map.put(row.getDate(), row.getCount() == null ? 0L : row.getCount());
+                }
+            }
+        }
+        List<DateCountVO> out = new ArrayList<>(12);
+        for (int m = 1; m <= 12; m++) {
+            String key = String.format("%04d-%02d", year, m);
+            DateCountVO item = new DateCountVO();
+            item.setDate(key);
+            item.setCount(map.getOrDefault(key, 0L));
+            out.add(item);
+        }
+        return out;
+    }
 
     private Long countByStatus(String status) {
         return articleMapper.selectCount(Wrappers.<KbArticle>lambdaQuery()

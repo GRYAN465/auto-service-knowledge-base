@@ -3,6 +3,7 @@
 #include "app/ArticleDetailDialog.h"
 #include "app/RefreshablePage.h"
 #include "common/TableStyle.h"
+#include "common/ThemeIcons.h"
 #include "core/auth/Session.h"
 #include "core/network/ApiClient.h"
 #include "core/notify/Notify.h"
@@ -44,8 +45,8 @@ void FavoritePage::buildUi() {
     root->setSpacing(14);
 
     auto *toolbar = new QHBoxLayout();
-    m_unfavBtn = new QPushButton(QStringLiteral("取消收藏"), this);
-    m_unfavBtn->setObjectName("GhostButton");
+    m_unfavBtn = new QPushButton(this);
+    ThemeIcons::applyIconButton(m_unfavBtn, ThemeIcons::Kind::StarFilled, QStringLiteral("取消收藏"));
     m_unfavBtn->setEnabled(Session::instance().hasPermission("interaction:favorite"));
     connect(m_unfavBtn, &QPushButton::clicked, this, &FavoritePage::unfavorite);
     toolbar->addWidget(m_unfavBtn);
