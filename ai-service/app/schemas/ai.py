@@ -1,11 +1,7 @@
 """Java 编排层 ↔ FastAPI 的接口契约（pydantic 模型即契约定义）。二期落地。"""
-<<<<<<< ai-service/app/schemas/ai.py
-from pydantic import BaseModel, Field, field_validator
-=======
 from typing import Literal
 
-
->>>>>>> ai-service/app/schemas/ai.py
+from pydantic import BaseModel, Field, field_validator
 
 KnowledgeType = Literal["SCRIPT", "TRAIN", "PRODUCT", "OFFICE"]
 

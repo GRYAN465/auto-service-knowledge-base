@@ -12,9 +12,11 @@ import com.kb.ai.dto.AiRecommendMatchResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -40,35 +42,38 @@ public class AiClient {
         this.restClient = RestClient.builder()
                 .baseUrl(baseUrl)
                 .requestFactory(factory)
+                .messageConverters(converters -> {
+                    converters.add(0, new StringHttpMessageConverter(StandardCharsets.UTF_8));
+                })
                 .build();
     }
 
     /** 向量化并入库（Python 侧 upsert=先删后写，整篇覆盖）。 */
-    public AiIndexResponse index(Long articleId, List<String> texts) {
+    public AiIndexResponse index(Long articleId, String knowledgeType, List<String> texts) {
         return restClient.post()
                 .uri("/ai/index")
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(new AiIndexRequest(articleId, texts))
+                .body(new AiIndexRequest(articleId, knowledgeType, texts))
                 .retrieve()
                 .body(AiIndexResponse.class);
     }
 
     /** 移除某知识的全部向量块（下线/删除时）。 */
-    public void removeIndex(Long articleId) {
+    public void removeIndex(Long articleId, String knowledgeType) {
         restClient.post()
                 .uri("/ai/index/remove")
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(Map.of("article_id", articleId))
+                .body(Map.of("article_id", articleId, "knowledge_type", knowledgeType != null ? knowledgeType : ""))
                 .retrieve()
                 .toBodilessEntity();
     }
 
     /** 检索增强问答。{@code allowedArticleIds=null} 表示不限（全体在线）。 */
-    public AiQaResponse qa(String question, Integer topK, List<Long> allowedArticleIds) {
+    public AiQaResponse qa(String question, String knowledgeType, Integer topK, List<Long> allowedArticleIds) {
         return restClient.post()
                 .uri("/ai/qa")
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(new AiQaRequest(question, topK, allowedArticleIds))
+                .body(new AiQaRequest(question, knowledgeType, topK, allowedArticleIds))
                 .retrieve()
                 .body(AiQaResponse.class);
     }

@@ -19,5 +19,8 @@ public class AiIndexRequest {
     @JsonProperty("article_id")
     private Long articleId;
 
+    @JsonProperty("knowledge_type")
+    private String knowledgeType;
+
     private List<String> texts;
 }

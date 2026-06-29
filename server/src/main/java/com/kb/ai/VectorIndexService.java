@@ -76,14 +76,14 @@ public class VectorIndexService {
         Long articleId = article.getId();
         String text = buildIndexText(article);
         if (!StringUtils.hasText(text)) {
-            safeRemoveVectors(articleId);                 // 清理可能残留的旧向量
+            safeRemoveVectors(articleId, article.getKnowledgeType());
             deleteChunks(articleId);
             saveStatus(articleId, STATUS_EMPTY, 0, 0, null, null);
             log.info("文章 {} 无可索引正文，记 EMPTY", articleId);
             return STATUS_EMPTY;
         }
         try {
-            AiIndexResponse resp = aiClient.index(articleId, List.of(text));
+            AiIndexResponse resp = aiClient.index(articleId, article.getKnowledgeType(), List.of(text));
             int chunkCount = resp != null && resp.getChunkCount() != null ? resp.getChunkCount() : 0;
             int dim = resp != null && resp.getDim() != null ? resp.getDim() : 0;
             rewriteChunk(articleId, text);
@@ -99,7 +99,9 @@ public class VectorIndexService {
 
     /** 移除某篇知识的全部向量块与来源文本，记 REMOVED。Python 调用失败也吞掉（best-effort）。 */
     public void removeArticle(Long articleId) {
-        safeRemoveVectors(articleId);
+        String kt = articleMapper.selectById(articleId) != null
+                ? articleMapper.selectById(articleId).getKnowledgeType() : null;
+        safeRemoveVectors(articleId, kt);
         deleteChunks(articleId);
         saveStatus(articleId, STATUS_REMOVED, 0, 0, null, null);
         log.info("文章 {} 向量已移除", articleId);
@@ -162,9 +164,9 @@ public class VectorIndexService {
         chunkMapper.delete(Wrappers.<KbChunk>lambdaQuery().eq(KbChunk::getArticleId, articleId));
     }
 
-    private void safeRemoveVectors(Long articleId) {
+    private void safeRemoveVectors(Long articleId, String knowledgeType) {
         try {
-            aiClient.removeIndex(articleId);
+            aiClient.removeIndex(articleId, knowledgeType != null ? knowledgeType : "");
         } catch (Exception e) {
             log.warn("移除文章 {} 向量失败（不影响业务）：{}", articleId, e.toString());
         }

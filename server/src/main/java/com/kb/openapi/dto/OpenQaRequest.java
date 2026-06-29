@@ -10,4 +10,7 @@ public class OpenQaRequest {
     private String question;
 
     private Integer topK = 5;
+
+    /** 可选：限定知识类型（SCRIPT/TRAIN/PRODUCT/OFFICE）。 */
+    private String knowledgeType;
 }

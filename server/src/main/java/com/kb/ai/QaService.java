@@ -76,10 +76,10 @@ public class QaService {
     // ---------------------------------------------------------------- 问答
 
     /** 内部问答（受 JWT/权限保护）：问答 + 标题回填 + 落库会话/消息/引用。 */
-    public QaVO ask(String question, Integer topK, Long categoryId, Long sessionId) {
+    public QaVO ask(String question, Integer topK, Long categoryId, Long sessionId, String knowledgeType) {
         Long userId = SecurityUtils.getUserIdOrNull();
         int k = normalizeTopK(topK);
-        QaVO vo = answerCore(question, k, allowedIdsFor(categoryId));
+        QaVO vo = answerCore(question, k, allowedIdsFor(categoryId), knowledgeType);
 
         QaSession session = resolveSession(sessionId, userId, question);
         QaMessage msg = saveMessage(session.getId(), userId, question, vo, k);
@@ -91,15 +91,15 @@ public class QaService {
     }
 
     /** 对外开放问答（HMAC 鉴权由 OpenApiController 完成）：复用核心，不限范围，不落会话。 */
-    public QaVO openQa(String question, Integer topK) {
-        return answerCore(question, normalizeTopK(topK), null);
+    public QaVO openQa(String question, Integer topK, String knowledgeType) {
+        return answerCore(question, normalizeTopK(topK), null, knowledgeType);
     }
 
     /** 调 Python 问答并回填引用标题，组装 QaVO（不含 session/message id）。 */
-    private QaVO answerCore(String question, int topK, List<Long> allowedIds) {
+    private QaVO answerCore(String question, int topK, List<Long> allowedIds, String knowledgeType) {
         AiQaResponse resp;
         try {
-            resp = aiClient.qa(question, topK, allowedIds);
+            resp = aiClient.qa(question, knowledgeType != null ? knowledgeType : "", topK, allowedIds);
         } catch (Exception e) {
             log.warn("问答服务调用失败：{}", e.toString());
             throw new BusinessException(ResultCode.SERVER_ERROR, "智能问答服务暂不可用，请稍后再试");

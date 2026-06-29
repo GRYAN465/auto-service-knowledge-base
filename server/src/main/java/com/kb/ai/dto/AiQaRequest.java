@@ -19,6 +19,9 @@ public class AiQaRequest {
 
     private String question;
 
+    @JsonProperty("knowledge_type")
+    private String knowledgeType;
+
     @JsonProperty("top_k")
     private Integer topK;
 

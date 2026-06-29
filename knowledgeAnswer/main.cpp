@@ -3,6 +3,7 @@
 #include <QApplication>
 #include <QColor>
 #include <QFile>
+#include <QFont>
 #include <QPalette>
 #include <QStyleFactory>
 
@@ -29,6 +30,11 @@ int main(int argc, char *argv[]) {
 
     QApplication::setStyle(QStyleFactory::create("Fusion"));
     applyLightPalette(app);
+
+    // 中文渲染: 用系统默认字体，不指定 font-family，让 macOS 自动做 CJK fallback
+    QFont sysFont = QApplication::font();
+    sysFont.setPixelSize(14);
+    app.setFont(sysFont);
 
     QFile qss(":/styles/app.qss");
     if (qss.open(QFile::ReadOnly | QFile::Text)) {

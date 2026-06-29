@@ -19,4 +19,7 @@ public class QaRequest {
 
     /** 可选：续问已有会话；不传则新建会话。 */
     private Long sessionId;
+
+    /** 可选：限定知识类型（SCRIPT/TRAIN/PRODUCT/OFFICE）；不传默认 SCRIPT。 */
+    private String knowledgeType;
 }
