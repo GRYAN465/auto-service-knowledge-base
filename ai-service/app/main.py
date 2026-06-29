@@ -15,7 +15,7 @@ from fastapi import FastAPI
 from app.api import ai, health
 from app.core.config import settings
 from app.core.logging import logger, setup_logging
-from app.services.vector_store import get_vector_store
+from app.services.vector_store import clear_all
 
 setup_logging()
 
@@ -26,8 +26,7 @@ async def lifespan(_app: FastAPI):
     logger.info("%s 启动（env=%s，向量库=%s）", settings.app_name, settings.env,
                 settings.vector_store_dir)
     if settings.rebuild_on_startup:
-        vs = get_vector_store()
-        removed = vs.clear_all()
+        removed = clear_all()
         logger.info("启动自清：已清空 %d 条向量（Java 启动后将全量重建）", removed)
     else:
         logger.info("rebuild_on_startup=false，保留既有向量数据")

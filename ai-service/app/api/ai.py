@@ -87,14 +87,14 @@ def index(req: IndexRequest) -> IndexResponse:
                             detail="file_path 与 texts 至少提供其一")
 
     vectors, dim = embedding.embed_texts(chunks)
-    count = get_vector_store().upsert(req.article_id, chunks, vectors)
+    count = get_vector_store(req.knowledge_type).upsert(req.article_id, chunks, vectors)
     return IndexResponse(article_id=req.article_id, chunk_count=count, dim=dim)
 
 
 @router.post("/index/remove")
 def index_remove(req: IndexRemoveRequest) -> dict:
     """移除某知识的全部向量块。触发点：知识下线/删除时由 Java 发起。"""
-    removed = get_vector_store().remove_article(req.article_id)
+    removed = get_vector_store(req.knowledge_type).remove_article(req.article_id)
     return {"article_id": req.article_id, "removed": removed}
 
 
@@ -105,7 +105,10 @@ def qa_endpoint(req: QaRequest) -> QaResponse:
     检索/向量库异常照常上抛 500；LLM 异常已在 qa.answer 内兜底，不会冒泡。
     """
     result = qa.answer(
-        req.question, top_k=req.top_k, allowed_article_ids=req.allowed_article_ids
+        req.question,
+        knowledge_type=req.knowledge_type,
+        top_k=req.top_k,
+        allowed_article_ids=req.allowed_article_ids,
     )
     return QaResponse(
         answer=result["answer"],
