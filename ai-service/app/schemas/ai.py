@@ -1,5 +1,9 @@
 """Java 编排层 ↔ FastAPI 的接口契约（pydantic 模型即契约定义）。二期落地。"""
+from typing import Literal
+
 from pydantic import BaseModel, Field
+
+KnowledgeType = Literal["SCRIPT", "TRAIN", "PRODUCT", "OFFICE"]
 
 
 # ——— /ai/parse：附件解析切分 ———
@@ -31,7 +35,7 @@ class EmbedResponse(BaseModel):
 # ——— /ai/index：向量化并入库（解析→切分→embed→写向量库）———
 class IndexRequest(BaseModel):
     article_id: int = Field(..., description="所属知识 ID（kb_article.id），向量库写入单位")
-    knowledge_type: str = Field(..., description="SCRIPT/TRAIN/PRODUCT/OFFICE")
+    knowledge_type: KnowledgeType = Field(..., description="知识类型")
     file_path: str | None = Field(
         None, description="附件相对/绝对路径；提供则由本服务解析切分"
     )
@@ -48,7 +52,7 @@ class IndexResponse(BaseModel):
 
 class IndexRemoveRequest(BaseModel):
     article_id: int = Field(..., description="下线/删除时移除该知识的全部向量块")
-    knowledge_type: str = Field(..., description="SCRIPT/TRAIN/PRODUCT/OFFICE")
+    knowledge_type: KnowledgeType = Field(..., description="知识类型")
 
 
 # ——— /ai/qa：检索增强问答 ———
@@ -61,7 +65,7 @@ class Citation(BaseModel):
 
 class QaRequest(BaseModel):
     question: str
-    knowledge_type: str = Field(..., description="SCRIPT/TRAIN/PRODUCT/OFFICE")
+    knowledge_type: KnowledgeType = Field(..., description="知识类型")
     top_k: int = Field(5, description="召回条数")
     # 权限与上线状态过滤由 Java 编排层完成，传入允许检索的知识范围
     allowed_article_ids: list[int] | None = Field(

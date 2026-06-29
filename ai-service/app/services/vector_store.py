@@ -160,10 +160,13 @@ def clear_all() -> int:
     """清空所有已知类型的 collection + 默认 collection。返回清除的块总数。"""
     total = 0
     for kt in _KNOWLEDGE_TYPES:
-        store = _get_or_create(_collection_name(kt), cache=False)
+        store = get_vector_store(kt)  # uses cache
         total += store.clear_all()
-    default = _get_or_create("kb_knowledge", cache=False)
+    default = get_vector_store()  # uses cache
     total += default.clear_all()
+    # After clear_all(), collections were deleted and recreated.
+    # The cached ChromaVectorStore instances have stale _col references.
+    # Clear cache so next get_vector_store() creates fresh instances.
     _stores.clear()
     return total
 
