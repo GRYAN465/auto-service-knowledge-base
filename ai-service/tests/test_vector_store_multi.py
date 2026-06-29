@@ -76,3 +76,24 @@ def test_clear_all_clears_all_types():
         s = get_vector_store(kt)
         hits = s.query(np.random.randn(dim).tolist(), top_k=5)
         assert len(hits) == 0, f"{kt} 应已被清空"
+
+
+def test_qa_routes_to_correct_collection():
+    import numpy as np
+    from app.services import embedding, qa
+
+    # Seed SCRIPT collection with refund text
+    store = get_vector_store("SCRIPT")
+    store.clear_all()
+    text = "退款政策：七天无理由退款，审核通过后 1-3 个工作日到账。"
+    vec, _ = embedding.embed_texts([text])
+    store.upsert(90001, [text], vec)
+
+    # Query with knowledge_type="SCRIPT" should hit
+    res = qa.answer("退款多久到账？", knowledge_type="SCRIPT", top_k=3)
+    assert res["mode"] != "no_hit", f"SCRIPT 库应有命中: {res}"
+    assert any(c["article_id"] == 90001 for c in res["citations"])
+
+    # Query with knowledge_type="TRAIN" should no_hit (different collection)
+    res_empty = qa.answer("退款多久到账？", knowledge_type="TRAIN", top_k=3)
+    assert res_empty["mode"] == "no_hit", "TRAIN 库不应有退款数据"

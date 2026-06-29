@@ -105,7 +105,10 @@ def _extractive_answer(refs: list[dict]) -> str:
 
 
 def answer(
-    question: str, top_k: int = 5, allowed_article_ids: list[int] | None = None
+    question: str,
+    knowledge_type: str = "SCRIPT",
+    top_k: int = 5,
+    allowed_article_ids: list[int] | None = None,
 ) -> dict:
     """检索增强问答，返回 {answer, citations, mode}。
 
@@ -121,7 +124,7 @@ def answer(
     qvec, _ = embedding.embed_query(q)
     # 宽召回：候选池至少覆盖请求 top_k，再多取些给精排挑（召回全、精排准）
     pool_k = max(settings.retrieve_k, top_k)
-    pool = get_vector_store().query(qvec, top_k=pool_k, allowed_article_ids=allowed_article_ids)
+    pool = get_vector_store(knowledge_type).query(qvec, top_k=pool_k, allowed_article_ids=allowed_article_ids)
     if not pool:
         return _no_hit()
 
