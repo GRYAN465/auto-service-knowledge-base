@@ -32,6 +32,8 @@ class Settings:
     # —— 向量库（Chroma，进程内嵌、落盘）——
     vector_store_dir: str = os.getenv("KB_AI_VECTOR_STORE_DIR", str(_BASE_DIR / "vector_store"))
     collection_name: str = os.getenv("KB_AI_COLLECTION", "kb_knowledge")
+    # 注：多 collection 分库后此默认 collection 仅用于向后兼容（get_vector_store(None)）。
+    # 新代码通过 get_vector_store(knowledge_type) 获取对应类型的独立 collection。
 
     # —— Embedding（本地 bge-zh，CPU）——
     # 默认指向本地下载的模型目录；不存在时 embedding 层回退为按模型名联网拉取。
