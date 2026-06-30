@@ -856,6 +856,21 @@ QPushButton#TagPickerChip:checked {
     color: #757575;
     background: transparent;
 }
+#FeedCardSkeleton {
+    background-color: #FEFEFE;
+    border: 1px solid #F1EEE8;
+    border-radius: 12px;
+}
+#SkeletonLine {
+    background-color: #F1EEE8;
+    border-radius: 4px;
+    max-width: 9999px;
+}
+#SkeletonLineShort {
+    background-color: #F1EEE8;
+    border-radius: 4px;
+    max-width: 240px;
+}
 
 #SectionTitle {
     font-size: 16px;
@@ -1121,10 +1136,67 @@ QSpinBox, QDoubleSpinBox {
     background-color: #F1EEE8;
     border: 1px solid #E0D9CE;
     border-radius: 8px;
-    padding: 7px 10px;
+    padding: 6px 26px 6px 10px;
     color: #000000;
+    min-height: 22px;
+}
+QSpinBox:hover, QDoubleSpinBox:hover {
+    border-color: #9AA69D;
 }
 QSpinBox:focus, QDoubleSpinBox:focus {
     border: 1px solid #9AA69D;
     background-color: #FEFEFE;
+}
+QSpinBox:disabled, QDoubleSpinBox:disabled {
+    background-color: #F5F0E8;
+    color: #757575;
+}
+QSpinBox::up-button, QDoubleSpinBox::up-button,
+QSpinBox::down-button, QDoubleSpinBox::down-button {
+    subcontrol-origin: border;
+    width: 24px;
+    border: none;
+    background: transparent;
+}
+QSpinBox::up-button, QDoubleSpinBox::up-button {
+    subcontrol-position: top right;
+    border-left: 1px solid #E0D9CE;
+    border-bottom: 1px solid #E0D9CE;
+    border-top-right-radius: 7px;
+    margin-top: 1px;
+    margin-right: 1px;
+    margin-bottom: 0;
+}
+QSpinBox::down-button, QDoubleSpinBox::down-button {
+    subcontrol-position: bottom right;
+    border-left: 1px solid #E0D9CE;
+    border-bottom-right-radius: 7px;
+    margin-bottom: 1px;
+    margin-right: 1px;
+}
+QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
+QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {
+    background-color: #E8E2D8;
+}
+QSpinBox::up-button:pressed, QDoubleSpinBox::up-button:pressed,
+QSpinBox::down-button:pressed, QDoubleSpinBox::down-button:pressed {
+    background-color: #D8D2C8;
+}
+QSpinBox::up-button:disabled, QDoubleSpinBox::up-button:disabled,
+QSpinBox::down-button:disabled, QDoubleSpinBox::down-button:disabled {
+    background: transparent;
+}
+QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
+    image: url(:/icons/chevron-up.svg);
+    width: 12px;
+    height: 12px;
+}
+QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
+    image: url(:/icons/chevron-down.svg);
+    width: 12px;
+    height: 12px;
+}
+QSpinBox::up-arrow:disabled, QDoubleSpinBox::up-arrow:disabled,
+QSpinBox::down-arrow:disabled, QDoubleSpinBox::down-arrow:disabled {
+    opacity: 0.45;
 }

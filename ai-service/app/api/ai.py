@@ -90,6 +90,7 @@ def index(req: IndexRequest) -> IndexResponse:
 
     vectors, dim = embedding.embed_texts(chunks)
     count = get_vector_store(req.knowledge_type).upsert(req.article_id, chunks, vectors)
+    recommend.invalidate_article_cache(req.article_id)
     return IndexResponse(article_id=req.article_id, chunk_count=count, dim=dim)
 
 
@@ -97,6 +98,7 @@ def index(req: IndexRequest) -> IndexResponse:
 def index_remove(req: IndexRemoveRequest) -> dict:
     """移除某知识的全部向量块。触发点：知识下线/删除时由 Java 发起。"""
     removed = get_vector_store(req.knowledge_type).remove_article(req.article_id)
+    recommend.invalidate_article_cache(req.article_id)
     return {"article_id": req.article_id, "removed": removed}
 
 

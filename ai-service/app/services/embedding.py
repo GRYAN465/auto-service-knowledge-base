@@ -71,5 +71,18 @@ def embed_texts(texts: list[str]) -> tuple[list[list[float]], int]:
 
 def embed_query(query: str) -> tuple[list[float], int]:
     """查询 → 归一化向量（带 bge 检索指令前缀）。返回 (vector, dim)。"""
-    vectors, dim = embed_texts([_QUERY_INSTRUCTION + query])
+    vectors, dim = embed_queries([query])
     return vectors[0], dim
+
+
+def embed_queries(queries: list[str]) -> tuple[list[list[float]], int]:
+    """多条查询批量 embedding（带 bge 检索指令前缀）。"""
+    if not queries:
+        return [], 0
+    return embed_texts([_QUERY_INSTRUCTION + q for q in queries])
+
+
+def warmup() -> None:
+    """启动预热：加载 bge 并完成一次 dummy embed，避免首请求长时间阻塞。"""
+    _, dim = embed_texts(["预热"])
+    logger.info("embedding 预热完成（dim=%d）", dim)

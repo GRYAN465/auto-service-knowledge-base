@@ -58,6 +58,8 @@ class Settings:
     # —— 启动行为 ——
     # 启动时是否清空向量库（默认 false，保留落盘数据）；需与 MySQL 强制对齐时可设 KB_AI_REBUILD_ON_STARTUP=true。
     rebuild_on_startup: bool = os.getenv("KB_AI_REBUILD_ON_STARTUP", "false").lower() in ("1", "true", "yes")
+    # 启动时预加载 bge 并完成一次 dummy embed，避免首条 /ai/recommend/match 或 /ai/index 卡 20s+。
+    warmup_on_startup: bool = os.getenv("KB_AI_WARMUP_ON_STARTUP", "true").lower() in ("1", "true", "yes")
 
     # —— 问答检索 ——
     # 相关性下限（余弦相似度）：低于此分的命中视为不相关而丢弃，用于「无相关知识」短路。

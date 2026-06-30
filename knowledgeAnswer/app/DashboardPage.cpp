@@ -20,9 +20,11 @@
 #include <QLabel>
 #include <QLocale>
 #include <QMouseEvent>
+#include <QPointer>
 #include <QPushButton>
 #include <QResizeEvent>
 #include <QScrollArea>
+#include <QSizePolicy>
 #include <QStyle>
 #include <QTimer>
 #include <QToolButton>
@@ -153,6 +155,30 @@ void clearLayout(QLayout *layout) {
     }
 }
 
+QFrame *makeFeedSkeleton(QWidget *parent) {
+    auto *card = new QFrame(parent);
+    card->setObjectName(QStringLiteral("FeedCardSkeleton"));
+    card->setFixedHeight(118);
+    auto *layout = new QVBoxLayout(card);
+    layout->setContentsMargins(18, 16, 18, 16);
+    layout->setSpacing(8);
+
+    auto *titleLine = new QFrame(card);
+    titleLine->setObjectName(QStringLiteral("SkeletonLine"));
+    titleLine->setFixedHeight(14);
+    auto *metaLine = new QFrame(card);
+    metaLine->setObjectName(QStringLiteral("SkeletonLine"));
+    metaLine->setFixedHeight(12);
+    auto *previewLine = new QFrame(card);
+    previewLine->setObjectName(QStringLiteral("SkeletonLineShort"));
+    previewLine->setFixedHeight(12);
+    layout->addWidget(titleLine);
+    layout->addWidget(metaLine);
+    layout->addWidget(previewLine);
+    layout->addStretch();
+    return card;
+}
+
 } // namespace
 
 DashboardPage::DashboardPage(const QString &title, QWidget *parent)
@@ -162,8 +188,7 @@ DashboardPage::DashboardPage(const QString &title, QWidget *parent)
     buildUi();
     loadMyKpi();
     if (m_canHotArticles) {
-        loadRecommendations();
-        loadHotArticles();
+        loadDashboardFeeds();
     }
 }
 
@@ -289,6 +314,7 @@ void DashboardPage::buildUi() {
 
         auto *leftCol = new QWidget(m_contentRow);
         m_leftCol = leftCol;
+        leftCol->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
         auto *leftLayout = new QVBoxLayout(leftCol);
         leftLayout->setContentsMargins(0, 0, 0, 0);
         leftLayout->setSpacing(8);
@@ -306,16 +332,18 @@ void DashboardPage::buildUi() {
         recHead->addWidget(viewMore);
         leftLayout->addLayout(recHead);
 
-        m_recommendHint = new QLabel(leftCol);
+        m_recommendHint = new QLabel(QStringLiteral("正在加载推荐…"), leftCol);
         m_recommendHint->setObjectName(QStringLiteral("MutedLabel"));
         m_recommendHint->setWordWrap(true);
         leftLayout->addWidget(m_recommendHint);
 
         auto *feedHost = new QWidget(leftCol);
+        feedHost->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
         m_recommendFeed = new QVBoxLayout(feedHost);
         m_recommendFeed->setContentsMargins(0, 0, 0, 0);
         m_recommendFeed->setSpacing(10);
-        leftLayout->addWidget(feedHost);
+        leftLayout->addWidget(feedHost, 1);
+        showRecommendSkeleton();
 
         m_rightCol = new QFrame(m_contentRow);
         m_rightCol->setObjectName(QStringLiteral("SectionCard"));
@@ -352,9 +380,14 @@ void DashboardPage::buildUi() {
 void DashboardPage::refreshPage() {
     loadMyKpi();
     if (m_canHotArticles) {
-        loadRecommendations();
-        loadHotArticles();
+        loadDashboardFeeds();
     }
+}
+
+void DashboardPage::loadDashboardFeeds() {
+    showRecommendSkeleton();
+    loadHotArticles();
+    QTimer::singleShot(0, this, &DashboardPage::loadRecommendations);
 }
 
 void DashboardPage::loadMyKpi() {
@@ -453,18 +486,46 @@ void DashboardPage::loadMyKpi() {
     });
 }
 
+void DashboardPage::showRecommendSkeleton() {
+    if (!m_recommendFeed || !m_leftCol) {
+        return;
+    }
+    clearLayout(m_recommendFeed);
+    for (int i = 0; i < kRecommendFetchLimit; ++i) {
+        m_recommendFeed->addWidget(makeFeedSkeleton(m_leftCol));
+    }
+    if (m_recommendHint) {
+        m_recommendHint->setText(QStringLiteral("正在加载推荐…"));
+    }
+    syncHotPanelHeight();
+}
+
 void DashboardPage::loadRecommendations() {
+    showRecommendSkeleton();
     const QString url =
-        QStringLiteral("/knowledge/recommend/home?limit=5&pinnedTagIds=%1").arg(pinnedTagIdsParam());
-    ApiClient::instance().get(url, [this](const ApiResponse &r) {
+        QStringLiteral("/knowledge/recommend/home?limit=%1&pinnedTagIds=%2")
+            .arg(kRecommendFetchLimit)
+            .arg(pinnedTagIdsParam());
+    QPointer<DashboardPage> self(this);
+    ApiClient::instance().get(url, [self](const ApiResponse &r) {
+        if (!self) {
+            return;
+        }
         if (!r.ok) {
-            setStatus(r.message, true);
+            if (self->m_recommendFeed) {
+                clearLayout(self->m_recommendFeed);
+            }
+            if (self->m_recommendHint) {
+                self->m_recommendHint->setText(QStringLiteral("推荐加载失败"));
+            }
+            self->setStatus(r.message, true);
+            self->syncHotPanelHeight();
             return;
         }
-        if (!m_recommendFeed) {
+        if (!self->m_recommendFeed) {
             return;
         }
-        clearLayout(m_recommendFeed);
+        clearLayout(self->m_recommendFeed);
 
         const QJsonObject data = r.object();
         const QJsonArray list = data.value("items").toArray();
@@ -486,31 +547,35 @@ void DashboardPage::loadRecommendations() {
                 }
             }
         }
-        if (m_recommendHint) {
+        if (self->m_recommendHint) {
             if (hintParts.isEmpty()) {
-                m_recommendHint->setText(fallback ? QStringLiteral("根据全站热门为你推荐")
-                                                  : QStringLiteral("根据你的兴趣为你推荐"));
+                self->m_recommendHint->setText(fallback ? QStringLiteral("根据全站热门为你推荐")
+                                                        : QStringLiteral("根据你的兴趣为你推荐"));
             } else {
                 QString hint = QStringLiteral("猜你感兴趣：%1").arg(hintParts.join(QStringLiteral(" · ")));
                 if (fallback) {
                     hint += QStringLiteral("（热门补足）");
                 }
-                m_recommendHint->setText(hint);
+                self->m_recommendHint->setText(hint);
             }
         }
 
         for (const QJsonValue &v : list) {
-            auto *card = new ArticleFeedCard(v.toObject(), m_contentRow);
-            connect(card, &ArticleFeedCard::clicked, this, &DashboardPage::openArticle);
-            m_recommendFeed->addWidget(card);
+            auto *card = new ArticleFeedCard(v.toObject(), self->m_contentRow);
+            connect(card, &ArticleFeedCard::clicked, card, [self](qint64 id) {
+                if (self) {
+                    self->openArticle(id);
+                }
+            });
+            self->m_recommendFeed->addWidget(card);
         }
         if (list.isEmpty()) {
-            auto *empty = new QLabel(QStringLiteral("暂无推荐内容"), m_contentRow);
+            auto *empty = new QLabel(QStringLiteral("暂无推荐内容"), self->m_contentRow);
             empty->setObjectName(QStringLiteral("MutedLabel"));
-            m_recommendFeed->addWidget(empty);
+            self->m_recommendFeed->addWidget(empty);
         }
-        setStatus(QString());
-        syncHotPanelHeight();
+        self->setStatus(QString());
+        self->syncHotPanelHeight();
     });
 }
 

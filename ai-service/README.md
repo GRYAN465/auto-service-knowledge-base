@@ -86,6 +86,7 @@ conda run -n kb-ai python scripts/validate_qa.py
 | `KB_AI_RERANK_DEVICE` | `cpu` | 精排推理设备（Apple Silicon 可设 `mps` 提速） |
 | `KB_AI_RERANK_MIN_SCORE` | `0.3` | 精排相关性下限（sigmoid 归一 0~1）；**启用精排时取代 `KB_AI_QA_MIN_SCORE`** 做「无相关知识」短路 |
 | `KB_AI_RUNTIME_LLM_CONFIG` | `ai-service/runtime_llm_config.json` | LLM 运行时配置落盘路径（Java 下发后持久化，启动时 overlay 覆盖 env 默认值） |
+| `KB_AI_WARMUP_ON_STARTUP` | `true` | 启动时预加载 bge 并 dummy embed；设为 `false` 则首请求才加载模型 |
 
 ## Java ↔ FastAPI 契约
 

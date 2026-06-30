@@ -32,8 +32,10 @@ private:
     void loadMyKpi();
     void loadRecommendations();
     void loadHotArticles();
+    void loadDashboardFeeds();
     void openArticle(qint64 articleId);
     void setStatus(const QString &text, bool error = false);
+    void showRecommendSkeleton();
     void syncHotPanelHeight();
     static QString pinnedTagIdsParam();
 
@@ -61,6 +63,7 @@ private:
     QWidget *m_contentRow = nullptr;
 
     static constexpr int kHotFetchLimit = 15;
+    static constexpr int kRecommendFetchLimit = 5;
 };
 
 } // namespace kb
