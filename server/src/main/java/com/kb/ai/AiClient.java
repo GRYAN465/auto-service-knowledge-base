@@ -13,9 +13,11 @@ import com.kb.ai.dto.AiRecommendMatchResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
@@ -40,6 +42,9 @@ public class AiClient {
         this.restClient = RestClient.builder()
                 .baseUrl(baseUrl)
                 .requestFactory(factory)
+                .messageConverters(converters -> {
+                    converters.add(0, new StringHttpMessageConverter(StandardCharsets.UTF_8));
+                })
                 .build();
     }
 
@@ -64,11 +69,11 @@ public class AiClient {
     }
 
     /** 检索增强问答。{@code allowedArticleIds=null} 表示不限（全体在线）。 */
-    public AiQaResponse qa(String question, Integer topK, List<Long> allowedArticleIds) {
+    public AiQaResponse qa(String question, String knowledgeType, Integer topK, List<Long> allowedArticleIds) {
         return restClient.post()
                 .uri("/ai/qa")
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(new AiQaRequest(question, topK, allowedArticleIds))
+                .body(new AiQaRequest(question, knowledgeType, topK, allowedArticleIds))
                 .retrieve()
                 .body(AiQaResponse.class);
     }

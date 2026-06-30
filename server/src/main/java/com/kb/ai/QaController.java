@@ -39,7 +39,7 @@ public class QaController {
     @PreAuthorize("hasAuthority('ai:qa')")
     public Result<QaVO> ask(@Valid @RequestBody QaRequest request) {
         return Result.ok(qaService.ask(request.getQuestion(), request.getTopK(),
-                request.getCategoryId(), request.getSessionId()));
+                request.getCategoryId(), request.getSessionId(), request.getKnowledgeType()));
     }
 
     @Operation(summary = "答案反馈（赞/踩）")

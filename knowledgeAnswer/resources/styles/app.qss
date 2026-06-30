@@ -4,10 +4,6 @@
    表格选中 #F0EBE4 · 导航半透明叠加 · FeedCard 轻 hover
    ============================================================ */
 
-* {
-    font-family: "Microsoft YaHei UI", "Microsoft YaHei", "Segoe UI", "PingFang SC", sans-serif;
-}
-
 /* ----- 全局基色 ----- */
 QWidget {
     background-color: #FEFEFE;

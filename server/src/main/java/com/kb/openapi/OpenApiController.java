@@ -102,7 +102,7 @@ public class OpenApiController {
             app = authService.authenticate(request, "qa", bodyText);
             OpenQaRequest body = readQa(bodyText);
             validateQa(body);
-            return Result.ok(qaService.openQa(body.getQuestion(), body.getTopK()));
+            return Result.ok(qaService.openQa(body.getQuestion(), body.getTopK(), body.getKnowledgeType()));
         } catch (BusinessException e) {
             code = e.getCode();
             throw e;

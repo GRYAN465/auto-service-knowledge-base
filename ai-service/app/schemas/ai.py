@@ -4,7 +4,6 @@ from typing import Literal
 
 
 
-
 KnowledgeType = Literal["SCRIPT", "TRAIN", "PRODUCT", "OFFICE"]
 
 
