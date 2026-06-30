@@ -1057,6 +1057,15 @@ QTreeWidget#DataTable::item:selected {
     border: 1px solid #F1EEE8;
     border-radius: 12px;
 }
+#ChatBotBubble QPushButton#IconButton {
+    background: transparent;
+}
+#ChatBotBubble QPushButton#IconButton:hover {
+    background: rgba(154, 166, 157, 0.14);
+}
+#ChatBotBubble QPushButton#IconButton:pressed {
+    background: rgba(154, 166, 157, 0.24);
+}
 #ModeBadge {
     background: #F1EEE8;
     color: #757575;
@@ -1076,6 +1085,34 @@ QTreeWidget#DataTable::item:selected {
     color: #757575;
     font-size: 13px;
 }
+
+QMenu#QaKbMenu {
+    background-color: #FEFEFE;
+    color: #000000;
+    border: 1px solid #E8E2D8;
+    border-radius: 8px;
+    padding: 4px 0;
+}
+QMenu#QaKbMenu::item {
+    min-height: 32px;
+    padding: 6px 18px;
+    color: #000000;
+    background-color: transparent;
+}
+QMenu#QaKbMenu::item:selected {
+    background-color: #FAF8F4;
+    color: #000000;
+}
+QMenu#QaKbMenu::item:checked {
+    background-color: #F0EBE4;
+    color: #000000;
+    font-weight: 600;
+}
+QMenu#QaKbMenu::indicator {
+    width: 0;
+    height: 0;
+}
+
 #FormCard {
     background: #FEFEFE;
     border: 1px solid #F1EEE8;

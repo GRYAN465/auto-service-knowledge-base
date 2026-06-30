@@ -36,8 +36,9 @@ import java.util.regex.Pattern;
 @Service
 public class VectorIndexService {
 
-    private static final String ONLINE = "ONLINE";
+    private static final String DEFAULT_KNOWLEDGE_TYPE = "SCRIPT";
 
+    private static final String ONLINE = "ONLINE";
     private static final String STATUS_INDEXED = "INDEXED";
     private static final String STATUS_REMOVED = "REMOVED";
     private static final String STATUS_FAILED = "FAILED";
@@ -76,14 +77,14 @@ public class VectorIndexService {
         Long articleId = article.getId();
         String text = buildIndexText(article);
         if (!StringUtils.hasText(text)) {
-            safeRemoveVectors(articleId);                 // 清理可能残留的旧向量
+            safeRemoveVectors(articleId, resolveKnowledgeType(article));                 // 清理可能残留的旧向量
             deleteChunks(articleId);
             saveStatus(articleId, STATUS_EMPTY, 0, 0, null, null);
             log.info("文章 {} 无可索引正文，记 EMPTY", articleId);
             return STATUS_EMPTY;
         }
         try {
-            AiIndexResponse resp = aiClient.index(articleId, List.of(text));
+            AiIndexResponse resp = aiClient.index(articleId, resolveKnowledgeType(article), List.of(text));
             int chunkCount = resp != null && resp.getChunkCount() != null ? resp.getChunkCount() : 0;
             int dim = resp != null && resp.getDim() != null ? resp.getDim() : 0;
             rewriteChunk(articleId, text);
@@ -99,7 +100,7 @@ public class VectorIndexService {
 
     /** 移除某篇知识的全部向量块与来源文本，记 REMOVED。Python 调用失败也吞掉（best-effort）。 */
     public void removeArticle(Long articleId) {
-        safeRemoveVectors(articleId);
+        safeRemoveVectors(articleId, resolveKnowledgeType(articleId));
         deleteChunks(articleId);
         saveStatus(articleId, STATUS_REMOVED, 0, 0, null, null);
         log.info("文章 {} 向量已移除", articleId);
@@ -162,12 +163,23 @@ public class VectorIndexService {
         chunkMapper.delete(Wrappers.<KbChunk>lambdaQuery().eq(KbChunk::getArticleId, articleId));
     }
 
-    private void safeRemoveVectors(Long articleId) {
+    private void safeRemoveVectors(Long articleId, String knowledgeType) {
         try {
-            aiClient.removeIndex(articleId);
+            aiClient.removeIndex(articleId, knowledgeType);
         } catch (Exception e) {
             log.warn("移除文章 {} 向量失败（不影响业务）：{}", articleId, e.toString());
         }
+    }
+
+    private String resolveKnowledgeType(KbArticle article) {
+        if (article != null && StringUtils.hasText(article.getKnowledgeType())) {
+            return article.getKnowledgeType().trim().toUpperCase();
+        }
+        return DEFAULT_KNOWLEDGE_TYPE;
+    }
+
+    private String resolveKnowledgeType(Long articleId) {
+        return resolveKnowledgeType(articleMapper.selectById(articleId));
     }
 
     /** upsert kb_vector_index：按 article_id 唯一行更新或插入；chunkCount/dim 为 null 时保留原值。 */

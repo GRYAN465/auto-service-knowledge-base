@@ -181,7 +181,7 @@ void DashboardPage::buildUi() {
     auto *content = new QWidget(scroll);
     auto *root = new QVBoxLayout(content);
     root->setContentsMargins(28, 20, 28, 24);
-    root->setSpacing(16);
+    root->setSpacing(0);
 
     const CurrentUser &u = Session::instance().user();
     const QString who = u.realName.isEmpty() ? u.username : u.realName;
@@ -205,6 +205,7 @@ void DashboardPage::buildUi() {
     welcomeCol->addWidget(welcomeTitle);
     welcomeCol->addWidget(welcomeHint);
     root->addLayout(welcomeCol);
+    root->addSpacing(12);
 
     struct QuickEntry {
         QString label;
@@ -231,7 +232,7 @@ void DashboardPage::buildUi() {
             m_quickScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
             m_quickScroll->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
             m_quickScroll->setFrameShape(QFrame::NoFrame);
-            m_quickScroll->setFixedHeight(80);
+            m_quickScroll->setFixedHeight(76);
             m_quickHost = new QWidget(m_quickScroll);
             m_quickRow = new QHBoxLayout(m_quickHost);
             m_quickRow->setContentsMargins(0, 0, 0, 0);
@@ -250,9 +251,13 @@ void DashboardPage::buildUi() {
         m_quickHost->adjustSize();
         m_quickHost->setFixedSize(qMax(m_quickHost->sizeHint().width(), 80), 72);
     }
+    if (m_quickScroll) {
+        root->addSpacing(8);
+    }
 
     m_status = new QLabel(content);
     m_status->setObjectName(QStringLiteral("StatusLabel"));
+    m_status->setVisible(false);
     root->addWidget(m_status);
 
     auto *kpiSection = new QFrame(content);
@@ -276,6 +281,7 @@ void DashboardPage::buildUi() {
     root->addWidget(kpiSection);
 
     if (m_canHotArticles) {
+        root->addSpacing(16);
         m_contentRow = new QWidget(content);
         auto *contentLayout = new QHBoxLayout(m_contentRow);
         contentLayout->setContentsMargins(0, 0, 0, 0);
@@ -587,6 +593,7 @@ void DashboardPage::setStatus(const QString &text, bool error) {
         return;
     }
     m_status->setText(text);
+    m_status->setVisible(!text.isEmpty());
     m_status->setStyleSheet(error ? QStringLiteral("color:#B94A48;") : QStringLiteral("color:#757575;"));
     if (error && !text.isEmpty()) {
         notify::warn(this, text);

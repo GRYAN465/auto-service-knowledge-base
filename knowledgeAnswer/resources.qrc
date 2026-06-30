@@ -1,36 +1,37 @@
-<RCC>
-    <qresource prefix="/">
-        <file alias="styles/app.qss">resources/styles/app.qss</file>
-        <file alias="icons/check-white.svg">resources/icons/check-white.svg</file>
-        <file alias="icons/chevron-down.svg">resources/icons/chevron-down.svg</file>
-        <file alias="icons/user.svg">resources/icons/user.svg</file>
-        <file alias="icons/logout.svg">resources/icons/logout.svg</file>
-        <file alias="icons/refresh.svg">resources/icons/refresh.svg</file>
-        <file alias="icons/star-outline.svg">resources/icons/star-outline.svg</file>
-        <file alias="icons/star-filled.svg">resources/icons/star-filled.svg</file>
-        <file alias="icons/thumb-up.svg">resources/icons/thumb-up.svg</file>
-        <file alias="icons/thumb-up-filled.svg">resources/icons/thumb-up-filled.svg</file>
-        <file alias="icons/thumb-down.svg">resources/icons/thumb-down.svg</file>
-        <file alias="icons/thumb-down-filled.svg">resources/icons/thumb-down-filled.svg</file>
-        <file alias="icons/share.svg">resources/icons/share.svg</file>
-        <file alias="icons/back.svg">resources/icons/back.svg</file>
-        <file alias="icons/download.svg">resources/icons/download.svg</file>
-        <file alias="icons/upload.svg">resources/icons/upload.svg</file>
-        <file alias="icons/trash.svg">resources/icons/trash.svg</file>
-        <file alias="icons/nav-home.svg">resources/icons/nav-home.svg</file>
-        <file alias="icons/nav-search.svg">resources/icons/nav-search.svg</file>
-        <file alias="icons/nav-book.svg">resources/icons/nav-book.svg</file>
-        <file alias="icons/nav-audit.svg">resources/icons/nav-audit.svg</file>
-        <file alias="icons/nav-tags.svg">resources/icons/nav-tags.svg</file>
-        <file alias="icons/nav-chart.svg">resources/icons/nav-chart.svg</file>
-        <file alias="icons/nav-api.svg">resources/icons/nav-api.svg</file>
-        <file alias="icons/nav-robot.svg">resources/icons/nav-robot.svg</file>
-        <file alias="icons/nav-headset.svg">resources/icons/nav-headset.svg</file>
-        <file alias="icons/nav-phone.svg">resources/icons/nav-phone.svg</file>
-        <file alias="icons/nav-team.svg">resources/icons/nav-team.svg</file>
-        <file alias="icons/nav-role.svg">resources/icons/nav-role.svg</file>
-        <file alias="icons/nav-lock.svg">resources/icons/nav-lock.svg</file>
-        <file alias="icons/nav-log.svg">resources/icons/nav-log.svg</file>
-        <file alias="icons/nav-settings.svg">resources/icons/nav-settings.svg</file>
-    </qresource>
-</RCC>
+<RCC>
+    <qresource prefix="/">
+        <file alias="styles/app.qss">resources/styles/app.qss</file>
+        <file alias="icons/check-white.svg">resources/icons/check-white.svg</file>
+        <file alias="icons/chevron-down.svg">resources/icons/chevron-down.svg</file>
+        <file alias="icons/chevron-up.svg">resources/icons/chevron-up.svg</file>
+        <file alias="icons/user.svg">resources/icons/user.svg</file>
+        <file alias="icons/logout.svg">resources/icons/logout.svg</file>
+        <file alias="icons/refresh.svg">resources/icons/refresh.svg</file>
+        <file alias="icons/star-outline.svg">resources/icons/star-outline.svg</file>
+        <file alias="icons/star-filled.svg">resources/icons/star-filled.svg</file>
+        <file alias="icons/thumb-up.svg">resources/icons/thumb-up.svg</file>
+        <file alias="icons/thumb-up-filled.svg">resources/icons/thumb-up-filled.svg</file>
+        <file alias="icons/thumb-down.svg">resources/icons/thumb-down.svg</file>
+        <file alias="icons/thumb-down-filled.svg">resources/icons/thumb-down-filled.svg</file>
+        <file alias="icons/share.svg">resources/icons/share.svg</file>
+        <file alias="icons/back.svg">resources/icons/back.svg</file>
+        <file alias="icons/download.svg">resources/icons/download.svg</file>
+        <file alias="icons/upload.svg">resources/icons/upload.svg</file>
+        <file alias="icons/trash.svg">resources/icons/trash.svg</file>
+        <file alias="icons/nav-home.svg">resources/icons/nav-home.svg</file>
+        <file alias="icons/nav-search.svg">resources/icons/nav-search.svg</file>
+        <file alias="icons/nav-book.svg">resources/icons/nav-book.svg</file>
+        <file alias="icons/nav-audit.svg">resources/icons/nav-audit.svg</file>
+        <file alias="icons/nav-tags.svg">resources/icons/nav-tags.svg</file>
+        <file alias="icons/nav-chart.svg">resources/icons/nav-chart.svg</file>
+        <file alias="icons/nav-api.svg">resources/icons/nav-api.svg</file>
+        <file alias="icons/nav-robot.svg">resources/icons/nav-robot.svg</file>
+        <file alias="icons/nav-headset.svg">resources/icons/nav-headset.svg</file>
+        <file alias="icons/nav-phone.svg">resources/icons/nav-phone.svg</file>
+        <file alias="icons/nav-team.svg">resources/icons/nav-team.svg</file>
+        <file alias="icons/nav-role.svg">resources/icons/nav-role.svg</file>
+        <file alias="icons/nav-lock.svg">resources/icons/nav-lock.svg</file>
+        <file alias="icons/nav-log.svg">resources/icons/nav-log.svg</file>
+        <file alias="icons/nav-settings.svg">resources/icons/nav-settings.svg</file>
+    </qresource>
+</RCC>

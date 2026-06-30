@@ -1,6 +1,7 @@
 package com.kb.ai;
 
 import com.kb.ai.dto.AiIndexRequest;
+import com.kb.ai.dto.AiIndexRemoveRequest;
 import com.kb.ai.dto.AiIndexResponse;
 import com.kb.ai.dto.AiLlmConfigPush;
 import com.kb.ai.dto.AiLlmTestRequest;
@@ -16,7 +17,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 调用 Python ai-service（FastAPI）的出站 HTTP 客户端：向量化入库 / 移除 / 检索增强问答 / 首页推荐匹配。
@@ -44,21 +44,21 @@ public class AiClient {
     }
 
     /** 向量化并入库（Python 侧 upsert=先删后写，整篇覆盖）。 */
-    public AiIndexResponse index(Long articleId, List<String> texts) {
+    public AiIndexResponse index(Long articleId, String knowledgeType, List<String> texts) {
         return restClient.post()
                 .uri("/ai/index")
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(new AiIndexRequest(articleId, texts))
+                .body(new AiIndexRequest(articleId, knowledgeType, texts))
                 .retrieve()
                 .body(AiIndexResponse.class);
     }
 
     /** 移除某知识的全部向量块（下线/删除时）。 */
-    public void removeIndex(Long articleId) {
+    public void removeIndex(Long articleId, String knowledgeType) {
         restClient.post()
                 .uri("/ai/index/remove")
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(Map.of("article_id", articleId))
+                .body(new AiIndexRemoveRequest(articleId, knowledgeType))
                 .retrieve()
                 .toBodilessEntity();
     }

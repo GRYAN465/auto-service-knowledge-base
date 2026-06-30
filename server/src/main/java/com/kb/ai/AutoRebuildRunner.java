@@ -48,7 +48,9 @@ public class AutoRebuildRunner {
 
     @EventListener(ApplicationReadyEvent.class)
     public void onReady() {
-        attemptRebuild("启动", true);
+        // 后台执行：避免在 ApplicationReady 线程上同步跑全量 reindex（可能数分钟），
+        // 与首页推荐/问答等并发打 Python 导致接口长时间无响应或连接被重置。
+        CompletableFuture.runAsync(() -> attemptRebuild("启动", true));
     }
 
     private void attemptRebuild(String phase, boolean scheduleRetry) {

@@ -5,21 +5,25 @@
 #include "core/network/ApiClient.h"
 #include "core/notify/Notify.h"
 
-#include <QComboBox>
+#include <QAction>
+#include <QActionGroup>
 #include <QFrame>
 #include <QHBoxLayout>
+#include <QIcon>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QMenu>
 #include <QPointer>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QSplitter>
 #include <QTimer>
+#include <QToolButton>
 #include <QVBoxLayout>
 
 namespace kb {
@@ -100,19 +104,9 @@ void QaPage::buildUi() {
     m_status->setObjectName("StatusLabel");
     chatLayout->addWidget(m_status);
 
-    auto *kbRow = new QHBoxLayout();
-    auto *kbLabel = new QLabel(QStringLiteral("知识库："), chatBox);
-    kbLabel->setStyleSheet("color:#6B7280; font-size:13px;");
-    m_kbSelector = new QComboBox(chatBox);
-    m_kbSelector->addItem(QStringLiteral("全部知识库"), QString());
-    m_kbSelector->addItem(QStringLiteral("客服话术库"), QStringLiteral("SCRIPT"));
-    m_kbSelector->addItem(QStringLiteral("培训学习库"), QStringLiteral("TRAIN"));
-    m_kbSelector->addItem(QStringLiteral("产品知识库"), QStringLiteral("PRODUCT"));
-    m_kbSelector->addItem(QStringLiteral("办公文档库"), QStringLiteral("OFFICE"));
-    m_kbSelector->setCurrentIndex(0);
-    kbRow->addWidget(kbLabel);
-    kbRow->addWidget(m_kbSelector, 1);
-    chatLayout->addLayout(kbRow);
+    m_kbScopeLabel = new QLabel(chatBox);
+    m_kbScopeLabel->setObjectName("MutedLabel");
+    chatLayout->addWidget(m_kbScopeLabel);
 
     auto *inputBar = new QHBoxLayout();
     m_input = new QLineEdit(chatBox);
@@ -120,9 +114,56 @@ void QaPage::buildUi() {
     m_input->setClearButtonEnabled(true);
     m_sendBtn = new QPushButton(QStringLiteral("发送"), chatBox);
     m_sendBtn->setObjectName("PrimaryButton");
+
+    m_kbMenu = new QMenu(this);
+    m_kbMenu->setObjectName(QStringLiteral("QaKbMenu"));
+    auto *kbGroup = new QActionGroup(m_kbMenu);
+    kbGroup->setExclusive(true);
+    const QVector<QPair<QString, QString>> kbOptions = {
+        {QStringLiteral("全部知识库"), QString()},
+        {QStringLiteral("客服话术库"), QStringLiteral("SCRIPT")},
+        {QStringLiteral("培训学习库"), QStringLiteral("TRAIN")},
+        {QStringLiteral("产品知识库"), QStringLiteral("PRODUCT")},
+        {QStringLiteral("办公文档库"), QStringLiteral("OFFICE")},
+    };
+    for (const auto &opt : kbOptions) {
+        auto *action = m_kbMenu->addAction(opt.first);
+        action->setCheckable(true);
+        action->setData(opt.second);
+        kbGroup->addAction(action);
+        if (opt.second.isEmpty()) {
+            action->setChecked(true);
+        }
+    }
+    connect(m_kbMenu, &QMenu::triggered, this, [this](QAction *action) {
+        if (!action) {
+            return;
+        }
+        for (QAction *a : m_kbMenu->actions()) {
+            a->setChecked(a == action);
+        }
+        m_kbType = action->data().toString();
+        m_kbLabel = action->text();
+        updateKbScopeLabel();
+    });
+
+    m_kbBtn = new QToolButton(chatBox);
+    m_kbBtn->setObjectName(QStringLiteral("IconButton"));
+    m_kbBtn->setIcon(QIcon(QStringLiteral(":/icons/chevron-up.svg")));
+    m_kbBtn->setIconSize(QSize(20, 20));
+    m_kbBtn->setCursor(Qt::PointingHandCursor);
+    m_kbBtn->setFixedSize(44, 44);
+    connect(m_kbBtn, &QToolButton::clicked, this, [this]() {
+        const QPoint topRight = m_kbBtn->mapToGlobal(QPoint(m_kbBtn->width(), 0));
+        const QSize menuSize = m_kbMenu->sizeHint();
+        m_kbMenu->popup(QPoint(topRight.x() - menuSize.width(), topRight.y() - menuSize.height() - 4));
+    });
+
     inputBar->addWidget(m_input, 1);
     inputBar->addWidget(m_sendBtn);
+    inputBar->addWidget(m_kbBtn);
     chatLayout->addLayout(inputBar);
+    updateKbScopeLabel();
     connect(m_sendBtn, &QPushButton::clicked, this, &QaPage::send);
     connect(m_input, &QLineEdit::returnPressed, this, &QaPage::send);
 
@@ -208,7 +249,7 @@ void QaPage::send() {
     if (m_sessionId > 0) {
         body["sessionId"] = m_sessionId;
     }
-    const QString kt = m_kbSelector->currentData().toString();
+    const QString kt = m_kbType;
     if (!kt.isEmpty()) {
         body["knowledgeType"] = kt;
     }
@@ -320,6 +361,8 @@ void QaPage::addAnswerBubble(const QString &answer, const QString &mode,
     // 反馈（落库消息才可反馈）
     if (messageId > 0) {
         auto *fbRow = new QWidget(bubble);
+        fbRow->setAutoFillBackground(false);
+        fbRow->setAttribute(Qt::WA_TranslucentBackground);
         auto *fl = new QHBoxLayout(fbRow);
         fl->setContentsMargins(0, 0, 0, 0);
         fl->setSpacing(6);
@@ -392,12 +435,31 @@ void QaPage::clearConversation() {
 }
 
 void QaPage::scrollToBottom() {
-    // 延后到布局完成后再滚到底
-    QTimer::singleShot(0, this, [this]() {
-        if (m_scroll && m_scroll->verticalScrollBar()) {
-            m_scroll->verticalScrollBar()->setValue(m_scroll->verticalScrollBar()->maximum());
+    const auto doScroll = [this]() {
+        if (m_messages) {
+            m_messages->adjustSize();
         }
-    });
+        if (!m_scroll) {
+            return;
+        }
+        if (QScrollBar *bar = m_scroll->verticalScrollBar()) {
+            bar->setValue(bar->maximum());
+        }
+    };
+    doScroll();
+    for (int delayMs : {0, 50, 120, 250}) {
+        QTimer::singleShot(delayMs, this, doScroll);
+    }
+}
+
+void QaPage::updateKbScopeLabel() {
+    if (!m_kbScopeLabel) {
+        return;
+    }
+    m_kbScopeLabel->setText(QStringLiteral("检索范围：%1").arg(m_kbLabel));
+    if (m_kbBtn) {
+        m_kbBtn->setToolTip(QStringLiteral("选择知识库（当前：%1）").arg(m_kbLabel));
+    }
 }
 
 void QaPage::setStatus(const QString &text, bool error) {

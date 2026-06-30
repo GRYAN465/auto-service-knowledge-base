@@ -33,9 +33,10 @@ void configureWideScrollTable(QTableWidget *table, int fixedColumn = -1);
 /** 配合 configureWideScrollTable，在填充数据后调用。 */
 void expandWideScrollColumns(QTableWidget *table, int fixedColumn = -1);
 
+/** 填充数据后统一左对齐；不设置悬停 tooltip（仅统计页图表保留 tooltip）。 */
 void setItemTooltipFromText(QTableWidget *table);
 
-/** 分类树：名称/编码列悬停显示完整文本。 */
+/** 分类树填充后清除悬停 tooltip。 */
 void setTreeItemTooltipFromText(QTreeWidget *tree);
 
 } // namespace TableStyle

@@ -221,7 +221,6 @@ void SearchPage::rebuildTagButtons() {
         btn->setChecked(active);
         btn->setCursor(Qt::PointingHandCursor);
         btn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        btn->setToolTip(text);
         connect(btn, &QPushButton::clicked, this, onClick);
         m_tagBtnRow->addWidget(btn);
     };

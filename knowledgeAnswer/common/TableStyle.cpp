@@ -157,10 +157,7 @@ void setItemTooltipFromText(QTableWidget *table) {
     for (int row = 0; row < table->rowCount(); ++row) {
         for (int col = 0; col < table->columnCount(); ++col) {
             if (QTableWidgetItem *item = table->item(row, col)) {
-                const QString text = item->text();
-                if (!text.isEmpty()) {
-                    item->setToolTip(text);
-                }
+                item->setToolTip(QString());
                 item->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
             }
         }
@@ -179,10 +176,7 @@ void setTreeItemTooltipFromText(QTreeWidget *tree) {
                 return;
             }
             for (int col : columns) {
-                const QString text = item->text(col);
-                if (!text.isEmpty()) {
-                    item->setToolTip(col, text);
-                }
+                item->setToolTip(col, QString());
             }
             for (int i = 0; i < item->childCount(); ++i) {
                 setOnItem(item->child(i));

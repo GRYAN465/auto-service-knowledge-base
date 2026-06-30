@@ -37,7 +37,9 @@ QNetworkRequest ApiClient::buildRequest(const QString &path, bool jsonContentTyp
 }
 
 void ApiClient::handle(QNetworkReply *reply, Callback cb) {
-    QObject::connect(reply, &QNetworkReply::finished, this, [reply, cb]() {
+    m_activeReplies.insert(reply);
+    QObject::connect(reply, &QNetworkReply::finished, this, [this, reply, cb]() {
+        m_activeReplies.remove(reply);
         ApiResponse res;
         const QByteArray raw = reply->readAll();
         const auto netErr = reply->error();
@@ -57,7 +59,7 @@ void ApiClient::handle(QNetworkReply *reply, Callback cb) {
             res.message = QStringLiteral("响应解析失败");
         }
 
-        if (!res.ok) {
+        if (!res.ok && netErr != QNetworkReply::OperationCanceledError) {
             kb::log::warn(QStringLiteral("API %1 -> code=%2 msg=%3")
                               .arg(reply->url().toString())
                               .arg(res.code)
@@ -69,6 +71,15 @@ void ApiClient::handle(QNetworkReply *reply, Callback cb) {
             cb(res);
         }
     });
+}
+
+void ApiClient::abortAll() {
+    const auto pending = m_activeReplies;
+    for (QNetworkReply *reply : pending) {
+        if (reply) {
+            reply->abort();
+        }
+    }
 }
 
 void ApiClient::get(const QString &path, Callback cb) {

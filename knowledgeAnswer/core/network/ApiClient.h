@@ -7,6 +7,7 @@
 #include <QString>
 
 #include <functional>
+#include <QSet>
 
 class QNetworkReply;
 
@@ -50,6 +51,9 @@ public:
     /** 二进制下载并写入 savePath（不走 JSON 解析）。自动注入 Authorization。 */
     void download(const QString &path, const QString &savePath, DownloadCallback cb);
 
+    /** 取消全部进行中的请求（退出登录时调用，避免回调访问已销毁页面）。 */
+    void abortAll();
+
 private:
     explicit ApiClient(QObject *parent = nullptr);
 
@@ -57,6 +61,7 @@ private:
     void handle(QNetworkReply *reply, Callback cb);
 
     QNetworkAccessManager m_manager;
+    QSet<QNetworkReply *> m_activeReplies;
 };
 
 } // namespace kb

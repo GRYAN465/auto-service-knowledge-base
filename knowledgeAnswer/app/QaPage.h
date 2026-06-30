@@ -5,14 +5,15 @@
 #include <QString>
 #include <QWidget>
 
-class QComboBox;
 class QJsonArray;
 class QJsonObject;
 class QLabel;
 class QLineEdit;
 class QListWidget;
+class QMenu;
 class QPushButton;
 class QScrollArea;
+class QToolButton;
 class QVBoxLayout;
 
 namespace kb {
@@ -47,6 +48,7 @@ private:
     void clearConversation();
     void scrollToBottom();
     void setStatus(const QString &text, bool error = false);
+    void updateKbScopeLabel();
 
     void sendFeedback(qint64 messageId, bool helpful, QPushButton *up, QPushButton *down);
 
@@ -60,7 +62,11 @@ private:
     QLineEdit *m_input = nullptr;
     QPushButton *m_sendBtn = nullptr;
     QLabel *m_status = nullptr;
-    QComboBox *m_kbSelector = nullptr;
+    QLabel *m_kbScopeLabel = nullptr;
+    QMenu *m_kbMenu = nullptr;
+    QToolButton *m_kbBtn = nullptr;
+    QString m_kbType;
+    QString m_kbLabel = QStringLiteral("全部知识库");
 };
 
 } // namespace kb

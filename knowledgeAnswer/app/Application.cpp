@@ -3,6 +3,7 @@
 #include "app/LoginDialog.h"
 #include "app/MainWindow.h"
 #include "core/auth/Session.h"
+#include "core/network/ApiClient.h"
 
 #include <QApplication>
 #include <QDialog>
@@ -28,6 +29,7 @@ bool Application::showLogin() {
 }
 
 void Application::onLogout() {
+    ApiClient::instance().abortAll();
     if (m_main) {
         m_main->hide();
         m_main->deleteLater();
