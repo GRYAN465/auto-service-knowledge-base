@@ -3,6 +3,7 @@
 #include "app/RefreshablePage.h"
 
 #include "app/AiConfigPage.h"
+#include "app/AgentAssistPage.h"
 #include "app/ArticleManagePage.h"
 #include "app/AuditCenterPage.h"
 #include "app/DashboardPage.h"
@@ -286,6 +287,9 @@ void MainWindow::registerPages() {
             }
             if (name == QStringLiteral("ai.config")) {
                 return new AiConfigPage(title);
+            }
+            if (name == QStringLiteral("agent")) {
+                return new AgentAssistPage(title);
             }
             return new PlaceholderPage(title, name, phase2);
         });

@@ -1,0 +1,30 @@
+[
+  [
+    {"speaker": "customer", "content": "你好，我想退订上个月办的套餐"},
+    {"speaker": "agent", "content": "好的，请问您要退订哪个套餐呢"},
+    {"speaker": "customer", "content": "就是那个99元的流量套餐"},
+    {"speaker": "agent", "content": "好的，我帮您查询一下"},
+    {"speaker": "customer", "content": "办完之后流量根本不够用，太坑了"},
+    {"speaker": "agent", "content": "我理解您的心情，我马上为您办理退订"},
+    {"speaker": "customer", "content": "退订之后会扣钱吗"},
+    {"speaker": "agent", "content": "本月已产生的流量费仍需按日折算收取"}
+  ],
+  [
+    {"speaker": "customer", "content": "我昨天买的手机壳发错货了，型号不对我要求投诉"},
+    {"speaker": "agent", "content": "很抱歉给您带来不便，请提供您的订单号"},
+    {"speaker": "customer", "content": "订单号是 SO20260628001"},
+    {"speaker": "agent", "content": "已查到，确认发错型号"},
+    {"speaker": "customer", "content": "什么时候能给我换货"},
+    {"speaker": "agent", "content": "我们今天为您补发正确型号，错货您可自行处理"}
+  ],
+  [
+    {"speaker": "customer", "content": "你们的会员有什么权益"},
+    {"speaker": "agent", "content": "会员可享专享折扣、生日礼和优先客服"},
+    {"speaker": "customer", "content": "年费多少，能不能按月付"},
+    {"speaker": "agent", "content": "年费199元，暂不支持按月支付"},
+    {"speaker": "customer", "content": "那我想试用一下可以吗"},
+    {"speaker": "agent", "content": "可以开通7天免费体验"},
+    {"speaker": "customer", "content": "体验期结束会自动扣费吗"},
+    {"speaker": "agent", "content": "不会，需您主动确认才会续费"}
+  ]
+]

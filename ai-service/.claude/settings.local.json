@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/opt/homebrew/Caskroom/miniconda/base/envs/kb-ai/bin/pip install *)",
+      "Bash(/opt/homebrew/Caskroom/miniconda/base/envs/kb-ai/bin/python -c \"from app.main import app; print\\('Import OK'\\)\")",
+      "Bash(/opt/homebrew/Caskroom/miniconda/base/envs/kb-ai/bin/pip index *)"
+    ]
+  }
+}
