@@ -30,10 +30,9 @@ namespace kb {
 namespace {
 
 QString wsBaseUrl() {
-    // Settings::baseUrl() 形如 http://localhost:8080/api；ws 需去 /api 后缀并改协议。
+    // Settings::baseUrl() 形如 http://localhost:8080/api；
+    // 只改协议 ws://，保留 /api 路径（WebSocket 端点挂在 context-path /api 下）。
     QString base = Settings::instance().baseUrl();
-    if (base.endsWith(QStringLiteral("/api")))
-        base.chop(4);
     if (base.startsWith(QStringLiteral("https://")))
         return QStringLiteral("wss://") + base.mid(8);
     if (base.startsWith(QStringLiteral("http://")))
@@ -222,6 +221,16 @@ void AgentAssistPage::connectWs(qint64 sessionId) {
     connect(m_ws, &QWebSocket::connected, this, &AgentAssistPage::onWsConnected);
     connect(m_ws, &QWebSocket::disconnected, this, &AgentAssistPage::onWsDisconnected);
     connect(m_ws, &QWebSocket::textMessageReceived, this, &AgentAssistPage::onWsTextMessage);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+    connect(m_ws, &QWebSocket::errorOccurred, this, [this](QAbstractSocket::SocketError) {
+        setStatus(QStringLiteral("WebSocket 错误：%1").arg(m_ws->errorString()), true);
+    });
+#else
+    connect(m_ws, QOverload<QAbstractSocket::SocketError>::of(&QWebSocket::error),
+            this, [this](QAbstractSocket::SocketError) {
+        setStatus(QStringLiteral("WebSocket 错误：%1").arg(m_ws->errorString()), true);
+    });
+#endif
     m_ws->open(QUrl(url));
 }
 

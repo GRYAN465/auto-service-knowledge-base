@@ -2,6 +2,7 @@ package com.kb.realtime.ws;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 
@@ -13,6 +14,7 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
  * 由 {@link RtHandshakeInterceptor} 自行校验；SecurityConfig 已放行该前缀。允许所有来源。
  */
 @Configuration
+@EnableWebSocket
 @RequiredArgsConstructor
 public class RtWebSocketConfig implements WebSocketConfigurer {
 

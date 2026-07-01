@@ -7,15 +7,17 @@
 
     conda activate kb-ai
     python scripts/mock_asr.py --base-url http://localhost:8080/api \\
-        --username agent --password 123456 --interval 3 --dialogue 0
+        --username admin --password 123456 --interval 3 --dialogue 0
 
 参数：
     --base-url    Java 后端地址（含 /api 前缀），默认 http://localhost:8080/api
-    --username    坐席账号（需有 realtime:assist 权限），默认 agent
+    --username    坐席账号（需有 realtime:assist 权限），默认 admin
     --password    坐席密码，默认 123456
     --interval    每段对话推送间隔（秒），默认 3
     --dialogue    选择第几组对话（从 0 起），默认 0
     --caller      主叫号码，默认 13800001234
+
+注：当前种子库仅 admin（持有 realtime:assist 权限）；真实坐席账号待后续人员管理模块落地后补充。
 """
 import argparse
 import json
@@ -74,7 +76,7 @@ def _auth(token: str) -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Mock ASR 模拟器（模块 10）")
     ap.add_argument("--base-url", default="http://localhost:8080/api")
-    ap.add_argument("--username", default="agent")
+    ap.add_argument("--username", default="admin")
     ap.add_argument("--password", default="123456")
     ap.add_argument("--interval", type=float, default=3.0)
     ap.add_argument("--dialogue", type=int, default=0)
