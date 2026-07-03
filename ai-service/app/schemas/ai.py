@@ -73,6 +73,14 @@ class QaRequest(BaseModel):
         None, description="允许命中的知识 ID（None=不限，由上游保证已过滤）"
     )
 
+    @field_validator("knowledge_type", mode="before")
+    @classmethod
+    def _coerce_knowledge_type(cls, v: object) -> str | None:
+        # 容忍空串：上游不限定类型时常传 ""，而 KnowledgeType 是 Literal 枚举，空串会触发 422。
+        if v in (None, ""):
+            return None
+        return str(v)  # type: ignore[return-value]
+
 
 class QaResponse(BaseModel):
     answer: str

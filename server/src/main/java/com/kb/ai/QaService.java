@@ -99,7 +99,9 @@ public class QaService {
     private QaVO answerCore(String question, int topK, List<Long> allowedIds, String knowledgeType) {
         AiQaResponse resp;
         try {
-            resp = aiClient.qa(question, knowledgeType != null ? knowledgeType : "", topK, allowedIds);
+            // null 而非 ""：knowledge_type 是 Literal 枚举，空串会被 Pydantic 422 拒绝；
+            // AiQaRequest 标注 @JsonInclude(NON_NULL)，null 时字段被省略，Python 侧视作 None（默认检索话术库）。
+            resp = aiClient.qa(question, knowledgeType, topK, allowedIds);
         } catch (Exception e) {
             log.warn("问答服务调用失败：{}", e.toString());
             throw new BusinessException(ResultCode.SERVER_ERROR, "智能问答服务暂不可用，请稍后再试");
