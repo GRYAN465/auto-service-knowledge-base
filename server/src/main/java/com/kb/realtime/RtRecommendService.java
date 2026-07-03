@@ -36,8 +36,10 @@ public class RtRecommendService {
     static final int RECOMMEND_INTERVAL_MS = 5000;
     /** 每次推荐条数。 */
     static final int RECOMMEND_TOP_K = 3;
-    /** 知识类型：MVP 只对话术库做检索（与 QaService.answerCore 默认行为一致）。 */
-    static final String KNOWLEDGE_TYPE = "";
+    /** 知识类型：MVP 只对话术库做检索（与 QaService.answerCore 默认行为一致）。
+     *  null 而非 ""：/ai/qa 的 knowledge_type 是 Literal 枚举，空串会触发 422；
+     *  AiQaRequest 标 @JsonInclude(NON_NULL)，null 时字段被省略，Python 视作 None（默认搜索话术库）。 */
+    static final String KNOWLEDGE_TYPE = null;
 
     private final RtSessionMapper rtSessionMapper;
     private final RtTranscriptMapper transcriptMapper;
@@ -92,8 +94,29 @@ public class RtRecommendService {
             return;
         }
 
-        List<Map<String, Object>> articles = new ArrayList<>();
         long maxSeq = news.get(news.size() - 1).getSeqNo();
+        List<Map<String, Object>> articles = recommendForText(trigger);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("triggerText", truncate(trigger, 200));
+        data.put("articles", articles);
+        data.put("lastSeqNo", maxSeq);
+        hub.send(s.getSessionId(), envelope("recommendation", data));
+
+        s.setLastCheckTime(now);
+        rtSessionMapper.updateById(s);
+    }
+
+    /**
+     * 单句/拼接文本 → RAG 推荐（复用 {@link AiClient#qa}）。
+     * 返回与 WS 推送同构的 articles 列表（articleId/title/score/rank），供定时推荐与点击取推荐共用。
+     * Python 不可用时返回空列表（不阻断调用方，设计 §8）。
+     */
+    public List<Map<String, Object>> recommendForText(String trigger) {
+        List<Map<String, Object>> articles = new ArrayList<>();
+        if (trigger == null || trigger.isBlank()) {
+            return articles;
+        }
         try {
             AiQaResponse resp = aiClient.qa(trigger, KNOWLEDGE_TYPE, RECOMMEND_TOP_K, null);
             if (resp != null && resp.getCitations() != null) {
@@ -108,17 +131,9 @@ public class RtRecommendService {
                 }
             }
         } catch (Exception e) {
-            log.warn("RT 推荐 Python 调用失败 sessionId={}（推空）: {}", s.getSessionId(), e.toString());
+            log.warn("RT 推荐 Python 调用失败（返回空）: {}", e.toString());
         }
-
-        Map<String, Object> data = new HashMap<>();
-        data.put("triggerText", truncate(trigger, 200));
-        data.put("articles", articles);
-        data.put("lastSeqNo", maxSeq);
-        hub.send(s.getSessionId(), envelope("recommendation", data));
-
-        s.setLastCheckTime(now);
-        rtSessionMapper.updateById(s);
+        return articles;
     }
 
     private String envelope(String type, Object data) {

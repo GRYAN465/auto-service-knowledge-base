@@ -1141,6 +1141,10 @@ QTreeWidget#DataTable::item:selected {
     padding: 8px 12px;
     font-size: 14px;
 }
+#CustomerBubble:hover {
+    background: #8A9690;
+    border: 1px solid #6F7D74;
+}
 #AgentBubble {
     background: #FFFFFF;
     color: #333333;

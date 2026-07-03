@@ -25,6 +25,9 @@ public:
     explicit AgentAssistPage(const QString &title, QWidget *parent = nullptr);
     void refreshPage() override;
 
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override;
+
 private slots:
     void onToggleSession();
     void onWsConnected();
@@ -37,12 +40,13 @@ private:
     void endSession();
     void connectWs(qint64 sessionId);
     void closeWs();
-    void appendTranscript(const QString &speaker, const QString &content);
+    void appendTranscript(const QString &speaker, const QString &content, qint64 seqNo);
     void setRecommendations(const QJsonArray &articles, const QString &triggerText);
     void clearPanel();
     void setStatus(const QString &text, bool error = false);
     void reconnectBackfill(qint64 sessionId);
     qint64 currentSessionId() const;
+    void requestRecommendBySeq(qint64 sessionId, qint64 seqNo);
 
     QString m_title;
     QLabel *m_callerLabel = nullptr;

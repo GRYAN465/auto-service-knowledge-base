@@ -7,6 +7,7 @@
 
 #include <QApplication>
 #include <QClipboard>
+#include <QEvent>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QInputDialog>
@@ -15,6 +16,7 @@
 #include <QJsonDocument>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMouseEvent>
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QScrollArea>
@@ -284,7 +286,8 @@ void AgentAssistPage::reconnectBackfill(qint64 sessionId) {
             m_transcriptLayout->addStretch();
             for (const auto &v : items) {
                 const auto m = v.toObject();
-                appendTranscript(m.value("speaker").toString(), m.value("content").toString());
+                appendTranscript(m.value("speaker").toString(), m.value("content").toString(),
+                                 m.value("seqNo").toVariant().toLongLong());
             }
         });
 }
@@ -298,7 +301,8 @@ void AgentAssistPage::onWsTextMessage(const QString &msg) {
     const auto data = root.value("data").toObject();
 
     if (type == QStringLiteral("transcript")) {
-        appendTranscript(data.value("speaker").toString(), data.value("content").toString());
+        appendTranscript(data.value("speaker").toString(), data.value("content").toString(),
+                         data.value("seqNo").toVariant().toLongLong());
     } else if (type == QStringLiteral("recommendation")) {
         setRecommendations(data.value("articles").toArray(), data.value("triggerText").toString());
     } else if (type == QStringLiteral("session_end")) {
@@ -312,7 +316,7 @@ void AgentAssistPage::onWsTextMessage(const QString &msg) {
     }
 }
 
-void AgentAssistPage::appendTranscript(const QString &speaker, const QString &content) {
+void AgentAssistPage::appendTranscript(const QString &speaker, const QString &content, qint64 seqNo) {
     auto *bubble = new QLabel(content, m_transcriptArea);
     bubble->setWordWrap(true);
     bubble->setTextInteractionFlags(Qt::TextSelectableByMouse);
@@ -320,6 +324,13 @@ void AgentAssistPage::appendTranscript(const QString &speaker, const QString &co
     const bool customer = (speaker == QStringLiteral("customer"));
     bubble->setObjectName(customer ? QStringLiteral("CustomerBubble")
                                    : QStringLiteral("AgentBubble"));
+    bubble->setProperty("seqNo", seqNo);
+
+    // 仅客户话术可点：点击即时取该句推荐。装手型光标 + 事件过滤捕获 MouseButtonPress。
+    if (customer) {
+        bubble->setCursor(Qt::PointingHandCursor);
+        bubble->installEventFilter(this);
+    }
 
     auto *row = new QWidget(m_transcriptArea->widget());
     row->setObjectName(QStringLiteral("TranscriptRow"));
@@ -442,6 +453,53 @@ void AgentAssistPage::setStatus(const QString &text, bool error) {
     m_hintLabel->setObjectName(error ? QStringLiteral("ErrorLabel") : QStringLiteral("MutedLabel"));
     m_hintLabel->style()->unpolish(m_hintLabel);
     m_hintLabel->style()->polish(m_hintLabel);
+}
+
+bool AgentAssistPage::eventFilter(QObject *watched, QEvent *event) {
+    // 客户话术气泡：鼠标按下即触发该句推荐（不区分左右键，单击即可）。
+    if (event->type() == QEvent::MouseButtonPress) {
+        auto *bubble = qobject_cast<QLabel *>(watched);
+        if (bubble && bubble->property("seqNo").isValid() && m_sessionId > 0) {
+            const qint64 seqNo = bubble->property("seqNo").toLongLong();
+            requestRecommendBySeq(m_sessionId, seqNo);
+            return true; // 吞掉事件，避免与 TextSelectableByMouse 的选中文本行为冲突
+        }
+    }
+    return QWidget::eventFilter(watched, event);
+}
+
+void AgentAssistPage::requestRecommendBySeq(qint64 sessionId, qint64 seqNo) {
+    if (sessionId <= 0)
+        return;
+    // 过渡反馈：清旧卡片 + 显示加载提示
+    QLayoutItem *item;
+    while ((item = m_recLayout->takeAt(0)) != nullptr) {
+        delete item->widget();
+        delete item;
+    }
+    m_recHint->setText(QStringLiteral("正在检索…"));
+    m_recHint->setObjectName(QStringLiteral("MutedLabel"));
+    m_recHint->style()->unpolish(m_recHint);
+    m_recHint->style()->polish(m_recHint);
+
+    QJsonObject body;
+    body["sessionId"] = sessionId;
+    body["seqNo"] = seqNo;
+    ApiClient::instance().post(QStringLiteral("/realtime/recommend/by-seq"), body,
+        [this](const ApiResponse &r) {
+            if (!r.ok || !r.data.isObject()) {
+                m_recHint->setText(QStringLiteral("检索失败"));
+                m_recHint->setObjectName(QStringLiteral("ErrorLabel"));
+                m_recHint->style()->unpolish(m_recHint);
+                m_recHint->style()->polish(m_recHint);
+                setStatus(QStringLiteral("取推荐失败：") + r.message, true);
+                return;
+            }
+            const auto obj = r.data.toObject();
+            const auto articles = obj.value("articles").toArray();
+            const QString triggerText = obj.value("triggerText").toString();
+            setRecommendations(articles, triggerText);
+        });
 }
 
 } // namespace kb

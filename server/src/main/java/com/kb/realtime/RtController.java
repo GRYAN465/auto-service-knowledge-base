@@ -40,6 +40,7 @@ public class RtController {
     private final RtSessionService sessionService;
     private final RtAsrService asrService;
     private final RtTranscriptMapper transcriptMapper;
+    private final RtRecommendService recommendService;
     private final RtConnectionHub hub;
     private final ObjectMapper objectMapper;
 
@@ -102,6 +103,24 @@ public class RtController {
         return Result.ok(Map.of("items", items));
     }
 
+    @Operation(summary = "按转写句即时取推荐知识（点击某句客户话术触发）")
+    @PostMapping("/recommend/by-seq")
+    @PreAuthorize("hasAuthority('realtime:assist')")
+    public Result<Map<String, Object>> recommendBySeq(@Valid @RequestBody RecommendBySeqRequest req) {
+        // 按 sessionId+seqNo 取权威 content（避免前端文本转义/截断），复用定时推荐同一检索路径
+        RtTranscript t = transcriptMapper.selectOne(Wrappers.<RtTranscript>lambdaQuery()
+                .eq(RtTranscript::getSessionId, req.getSessionId())
+                .eq(RtTranscript::getSeqNo, req.getSeqNo()));
+        if (t == null) {
+            return Result.ok(Map.of("triggerText", "", "articles", List.of()));
+        }
+        List<Map<String, Object>> articles = recommendService.recommendForText(t.getContent());
+        Map<String, Object> data = new HashMap<>();
+        data.put("triggerText", truncate(t.getContent(), 200));
+        data.put("articles", articles);
+        return Result.ok(data);
+    }
+
     private String envelope(String type, Object data) {
         try {
             Map<String, Object> msg = new HashMap<>();
@@ -111,6 +130,10 @@ public class RtController {
         } catch (Exception e) {
             return "{}";
         }
+    }
+
+    private static String truncate(String s, int max) {
+        return s == null ? "" : (s.length() <= max ? s : s.substring(0, max));
     }
 
     @Data
@@ -133,5 +156,13 @@ public class RtController {
         private String speaker;
         @NotBlank
         private String content;
+    }
+
+    @Data
+    public static class RecommendBySeqRequest {
+        @jakarta.validation.constraints.NotNull
+        private Long sessionId;
+        @jakarta.validation.constraints.NotNull
+        private Integer seqNo;
     }
 }
