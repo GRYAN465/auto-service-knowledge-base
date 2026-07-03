@@ -5,6 +5,7 @@
 #include "core/notify/Notify.h"
 
 #include <QCheckBox>
+#include <QComboBox>
 #include <QDoubleSpinBox>
 #include <QFormLayout>
 #include <QFrame>
@@ -58,6 +59,12 @@ void AiConfigPage::buildUi() {
     form->setHorizontalSpacing(14);
     form->setVerticalSpacing(12);
 
+    // 顶部「预设模型」下拉：选择后自动填充接口地址 + 模型名（OpenAI 兼容厂商）
+    m_preset = new QComboBox(card);
+    m_preset->setMinimumWidth(260);
+    populatePresets();
+    form->addRow(QStringLiteral("预设模型"), m_preset);
+
     m_baseUrl = new QLineEdit(card);
     m_baseUrl->setPlaceholderText(QStringLiteral("如 https://api.example.com/v1"));
     form->addRow(QStringLiteral("接口地址"), m_baseUrl);
@@ -68,7 +75,7 @@ void AiConfigPage::buildUi() {
     form->addRow(QStringLiteral("API Key"), m_apiKey);
 
     m_model = new QLineEdit(card);
-    m_model->setPlaceholderText(QStringLiteral("如 qwen-plus / gpt-4o-mini"));
+    m_model->setPlaceholderText(QStringLiteral("如 qwen-plus / gpt-5.5"));
     form->addRow(QStringLiteral("模型名"), m_model);
 
     m_temperature = new QDoubleSpinBox(card);
@@ -108,6 +115,12 @@ void AiConfigPage::buildUi() {
 
     connect(m_testBtn, &QPushButton::clicked, this, &AiConfigPage::testConnection);
     connect(m_saveBtn, &QPushButton::clicked, this, &AiConfigPage::saveConfig);
+
+    // 预设选择 → 自动填充接口地址与模型名；手动改地址/模型名 → 下拉回退「自定义」
+    connect(m_preset, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+            &AiConfigPage::applyPreset);
+    connect(m_baseUrl, &QLineEdit::textChanged, this, &AiConfigPage::syncPresetFromFields);
+    connect(m_model, &QLineEdit::textChanged, this, &AiConfigPage::syncPresetFromFields);
 
     // 分隔
     auto *line = new QFrame(this);
@@ -171,6 +184,65 @@ void AiConfigPage::loadConfig() {
             configured ? QStringLiteral("已配置 %1（留空＝不修改）").arg(masked)
                        : QStringLiteral("未配置，请填入 API Key"));
     });
+}
+
+void AiConfigPage::populatePresets() {
+    // 第 0 项为「自定义」：model/baseUrl 任一与预设不符时回落到这里
+    m_preset->addItem(QStringLiteral("自定义"), QStringLiteral("|"));
+
+    // 厂商：显示名 -> 存储数据格式 "baseUrl|model"（均为 OpenAI 兼容接口）
+    m_preset->addItem(QStringLiteral("通义千问 · qwen-plus"),
+                      QStringLiteral("https://dashscope.aliyuncs.com/compatible-mode/v1|qwen-plus"));
+    m_preset->addItem(QStringLiteral("通义千问 · qwen-max"),
+                      QStringLiteral("https://dashscope.aliyuncs.com/compatible-mode/v1|qwen-max"));
+    m_preset->addItem(QStringLiteral("DeepSeek · deepseek-v4-flash"),
+                      QStringLiteral("https://api.deepseek.com/v1|deepseek-v4-flash"));
+    m_preset->addItem(QStringLiteral("DeepSeek · deepseek-v4-pro"),
+                      QStringLiteral("https://api.deepseek.com/v1|deepseek-v4-pro"));
+    m_preset->addItem(QStringLiteral("智谱 GLM · glm-4-flash"),
+                      QStringLiteral("https://open.bigmodel.cn/api/paas/v4|glm-4-flash"));
+    m_preset->addItem(QStringLiteral("智谱 GLM · glm-4"),
+                      QStringLiteral("https://open.bigmodel.cn/api/paas/v4|glm-4"));
+    m_preset->addItem(QStringLiteral("OpenAI · gpt-5.5"),
+                      QStringLiteral("https://api.openai.com/v1|gpt-5.5"));
+    m_preset->addItem(QStringLiteral("OpenAI · gpt-5.5-mini"),
+                      QStringLiteral("https://api.openai.com/v1|gpt-5.5-mini"));
+    m_preset->addItem(QStringLiteral("月之暗面 Kimi · moonshot-v1-8k"),
+                      QStringLiteral("https://api.moonshot.cn/v1|moonshot-v1-8k"));
+}
+
+void AiConfigPage::applyPreset(int index) {
+    if (index < 0 || !m_baseUrl || !m_model) {
+        return;
+    }
+    const QString data = m_preset->itemData(index).toString();
+    const int sep = data.indexOf(QLatin1Char('|'));
+    if (sep < 0) {
+        return; // 「自定义」项无填充动作
+    }
+    const QString url = data.left(sep);
+    const QString model = data.mid(sep + 1);
+    if (url.isEmpty() && model.isEmpty()) {
+        return;
+    }
+    m_baseUrl->setText(url);
+    m_model->setText(model);
+}
+
+void AiConfigPage::syncPresetFromFields() {
+    if (!m_preset || !m_baseUrl || !m_model) {
+        return;
+    }
+    const QString key = m_baseUrl->text().trimmed() + QLatin1Char('|') + m_model->text().trimmed();
+    // 找不到匹配的预设则回落到第 0 项「自定义」，避免与当前字段内容互相打架
+    int hit = m_preset->findData(key);
+    if (hit < 0) {
+        hit = 0;
+    }
+    if (m_preset->currentIndex() != hit) {
+        QSignalBlocker b(m_preset); // 仅同步显示，不触发 applyPreset 覆盖手动输入
+        m_preset->setCurrentIndex(hit);
+    }
 }
 
 QJsonObject AiConfigPage::collectBody() const {
