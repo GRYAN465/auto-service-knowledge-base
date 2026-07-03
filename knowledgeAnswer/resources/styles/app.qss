@@ -1115,6 +1115,50 @@ QTreeWidget#DataTable::item:selected {
     font-size: 13px;
 }
 
+/* ----- 坐席辅助（模块 10）----- */
+#AgentHead {
+    background: #F7F3EC;
+    border: 1px solid #EDE6DB;
+    border-radius: 10px;
+}
+#TranscriptArea {
+    background: #FAF8F4;
+    border: 1px solid #F1EEE8;
+    border-radius: 10px;
+}
+#TranscriptScroll {
+    border: none;
+    background: transparent;
+}
+#CustomerBubble {
+    background: #9AA69D;
+    color: #FFFFFF;
+    border-radius: 12px;
+    padding: 8px 12px;
+    font-size: 14px;
+}
+#AgentBubble {
+    background: #FFFFFF;
+    color: #333333;
+    border: 1px solid #E8E2D8;
+    border-radius: 12px;
+    padding: 8px 12px;
+    font-size: 14px;
+}
+#RecommendArea {
+    background: #FAF8F4;
+    border: 1px solid #F1EEE8;
+    border-radius: 10px;
+}
+#RecommendCard {
+    background: #FFFFFF;
+    border: 1px solid #F1EEE8;
+    border-radius: 8px;
+}
+#RecommendCard:hover {
+    border-color: #9AA69D;
+}
+
 QMenu#QaKbMenu {
     background-color: #FEFEFE;
     color: #000000;

@@ -20,9 +20,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Network Charts)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Network Charts WebSockets)
 
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Network Charts)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Network Charts WebSockets)
 
 
 
@@ -87,6 +87,8 @@ set(PROJECT_SOURCES
         app/QaPage.h                app/QaPage.cpp
 
         app/AiConfigPage.h          app/AiConfigPage.cpp
+
+        app/AgentAssistPage.h       app/AgentAssistPage.cpp
 
 
 
@@ -175,6 +177,8 @@ target_link_libraries(knowledgeAnswer PRIVATE
     Qt${QT_VERSION_MAJOR}::Network
 
     Qt${QT_VERSION_MAJOR}::Charts
+
+    Qt${QT_VERSION_MAJOR}::WebSockets
 
 )
 

@@ -50,7 +50,8 @@ public class SecurityConfig {
                                 "/auth/register/orgs",
                                 "/open/v1/**",
                                 "/actuator/health",
-                                "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
+                                "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**",
+                                "/ws/realtime/**")
                         .permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(e -> e
