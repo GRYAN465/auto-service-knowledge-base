@@ -33,5 +33,9 @@
         <file alias="icons/nav-lock.svg">resources/icons/nav-lock.svg</file>
         <file alias="icons/nav-log.svg">resources/icons/nav-log.svg</file>
         <file alias="icons/nav-settings.svg">resources/icons/nav-settings.svg</file>
+        <file alias="icons/app-logo-mark.svg">resources/icons/app-logo-mark.svg</file>
+        <file alias="icons/app-logo-compact.svg">resources/icons/app-logo-compact.svg</file>
+        <file alias="icons/app-brand-wordmark.svg">resources/icons/app-brand-wordmark.svg</file>
+        <file alias="images/app-brand-wordmark.png">resources/images/app-brand-wordmark.png</file>
     </qresource>
 </RCC>

@@ -13,7 +13,7 @@ namespace kb {
 class PageRouter;
 
 /**
- * 主窗口：顶栏（页面标题 + 用户 + 退出）/ 左侧导航树（按 /auth/me 菜单构建）/
+ * 主窗口：顶栏（页面标题 + 用户 + 退出）/ 左侧导航（品牌 + 菜单树）/
  * 中央 QStackedWidget（PageRouter 懒加载页面）。
  */
 class MainWindow : public QMainWindow {
@@ -31,10 +31,12 @@ private:
     void navigateToCurrent();
     void navigateToRoute(const QString &name);
     void updateTopBarRefresh();
+    void updatePageTitle(QTreeWidgetItem *item);
 
     QTreeWidget *m_nav = nullptr;
     QStackedWidget *m_stack = nullptr;
     PageRouter *m_router = nullptr;
+    QLabel *m_pageTitleIcon = nullptr;
     QLabel *m_pageTitle = nullptr;
     QPushButton *m_refreshBtn = nullptr;
 };

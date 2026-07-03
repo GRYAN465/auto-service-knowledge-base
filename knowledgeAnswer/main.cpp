@@ -4,6 +4,7 @@
 #include <QColor>
 #include <QFile>
 #include <QFont>
+#include <QIcon>
 #include <QPalette>
 #include <QStyleFactory>
 
@@ -26,7 +27,8 @@ int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     QApplication::setOrganizationName("kb");
     QApplication::setApplicationName("knowledgeAnswer");
-    QApplication::setApplicationDisplayName(QStringLiteral("智能客服知识库系统"));
+    QApplication::setApplicationDisplayName(QStringLiteral("坐席智能体"));
+    QApplication::setWindowIcon(QIcon(QStringLiteral(":/icons/app-logo-mark.svg")));
 
     QApplication::setStyle(QStyleFactory::create("Fusion"));
     applyLightPalette(app);

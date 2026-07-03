@@ -4,7 +4,23 @@
 > 主题文件：`resources/styles/app.qss`  
 > 加载入口：`main.cpp`（Fusion 风格 + 浅色调色板 + 全局 QSS）  
 > 设计参考：花笺笔记类暖色极简界面  
-> 最近更新：2026-06-23（v1.4 图标按钮 IconButton、互动计数标签）
+> 最近更新：2026-07-03（v1.7 顶栏浅米黄 `#FAF6F0`、侧栏 PNG 字标）
+
+---
+
+## 0. 品牌标识
+
+| 项 | 说明 |
+|---|---|
+| 产品名 | **坐席智能体**（窗口标题、登录页） |
+| 侧栏字标 | **硅基生命坐席**（PNG 艺术字 + 电路装饰） |
+| Logo 含义 | 耳机 + 机器人：坐席佩戴耳机，由 AI 智能体辅助 |
+| 资源 | `resources/icons/app-logo-mark.svg`（48×48，登录/任务栏） |
+| | `resources/icons/app-logo-compact.svg`（32×32，侧栏） |
+| | `resources/images/app-brand-wordmark.png`（侧栏字标，透明底） |
+| 侧栏 | `#NavBrandBlock`：Logo + PNG 字标 |
+| 顶栏 | `#PageTitle` + 当前页导航图标（随菜单切换） |
+| 应用图标 | `main.cpp` 中 `QApplication::setWindowIcon` |
 
 ---
 
@@ -16,7 +32,7 @@
 | 留白优先 | 卡片间距 ≥ 14px，内边距 ≥ 18px，不堆叠重色块 |
 | 层次靠边框 | 侧栏/顶栏用 `#E0D9CE` 分隔线，卡片用 `#F1EEE8` 描边 |
 | 正文高对比 | 正文 `#000000`，次要信息 `#4A4A4A` / `#757575` |
-| 分区可辨 | **导航米黄 `#F3EDE4` 与主背景 `#FEFEFE` 有明显温差** |
+| 分区可辨 | **三层暖色**：主内容 `#FEFEFE` → 顶栏 `#FAF6F0` → 侧栏 `#F3EDE4`，逐级偏暖 |
 | 交互柔化 | 导航 hover/选中用**半透明叠加**，避免黄绿强对比；FeedCard hover 轻暖、不用饱和绿边 |
 | 图标优先 | 刷新、收藏、点赞/点踩、分享、返回、附件操作等**高频轻操作**用 `#IconButton` 无边框图标，文字保留 tooltip |
 | 样式集中 | **优先改 `app.qss`**，控件用 `objectName` 挂接，避免页面内硬编码颜色 |
@@ -30,7 +46,8 @@
 | Token | 色值 | 用途 |
 |---|---|---|
 | `bg-main` | **#FEFEFE** | 主背景：内容区、卡片、对话框、正文区 |
-| `bg-nav` | **#F3EDE4** | 导航栏、表头、问答助手气泡、Tab 未选中 |
+| `bg-topbar` | **#FAF6F0** | 顶栏 `#TopBar`：比侧栏略浅的淡米黄 |
+| `bg-nav` | **#F3EDE4** | 侧栏、表头、问答助手气泡、Tab 未选中 |
 | `bg-table-selected` | **#F0EBE4** | 表格行选中、列表选中、下拉列表选中 |
 | `bg-accent-soft` | **#F1EEE8** | 次要按钮底、搜索栏/输入框底、卡片边框 |
 | `bg-comment-hover` | **#FAF8F4** | 详情页评论 hover / 点选反馈 |
@@ -76,7 +93,9 @@
    │
    ├── #FAF8F4  表格斑马纹 / FeedCard hover
    │
-   ├── #F3EDE4  导航 / 表头 / 次要区块（米黄）
+   ├── #FAF6F0  顶栏（浅米黄，较侧栏更浅）
+   │
+   ├── #F3EDE4  侧栏 / 表头 / 次要区块（米黄）
    │
    ├── #F1EEE8  控件 / 边框（淡黄）
    │
@@ -90,7 +109,9 @@
 
 | 相邻区域 | 前景 | 背景 | 说明 |
 |---|---|---|---|
-| 主内容 vs 侧栏 | — | #FEFEFE vs **#F3EDE4** | 侧栏偏暖黄 |
+| 顶栏 vs 侧栏 | — | **#FAF6F0** vs **#F3EDE4** | 顶栏更浅，侧栏更暖 |
+| 主内容 vs 侧栏 | — | #FEFEFE vs **#F3EDE4** | 内容区最亮 |
+| 主内容 vs 顶栏 | — | #FEFEFE vs **#FAF6F0** | 顶栏轻暖过渡 |
 | 表格未选中 vs 选中 | #000000 | #FEFEFE vs **#F0EBE4** | 轻暖高亮 |
 | 导航 hover / 选中 | **#000000** | 半透明叠加于 **#F3EDE4** | 无黄绿强跳色 |
 | FeedCard 常态 vs hover | — | #FEFEFE vs **#FAF8F4** | 极轻反馈 |
@@ -130,8 +151,11 @@
 
 | objectName | 控件 | 背景 | 边框 |
 |---|---|---|---|
-| `TopBar` | 顶栏 QFrame | #FEFEFE | 底边 **#E0D9CE** |
+| `TopBar` | 顶栏 QFrame | **#FAF6F0** | 底边 **#E0D9CE** |
 | `NavSidebar` | 侧栏容器 | **#F3EDE4** | 右边 **#E0D9CE** |
+| `NavBrandBlock` | 侧栏品牌区 | **#F3EDE4** | 底边 **#E0D9CE** |
+| `NavBrandMark` / `NavBrandWordmark` | Logo + PNG 字标 | 透明 | 无 |
+| `PageTitleIcon` / `PageTitle` | 顶栏页标题 | 透明 | 无 |
 | `NavTree` | 导航 QTreeWidget | **#F3EDE4** | 无 |
 | `ContentStack` | 主内容 QStackedWidget | #FEFEFE | 无 |
 
@@ -224,8 +248,10 @@ btn->style()->polish(btn);
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│ TopBar (#FEFEFE)                                             │
+│ TopBar (#FAF6F0)  PageTitleIcon + PageTitle + 刷新/角色/用户  │
 ├──────────────┬──────────────────────────────────────────────┤
+│ NavBrandBlock│ ContentStack (#FEFEFE)                        │
+│ Logo+PNG字标 ├──────────────────────────────────────────────┤
 │ NavSidebar   │ WelcomeBanner: 黄→绿渐变                      │
 │ (#F3EDE4)    │ FeedCard hover: #FAF8F4（极轻）               │
 │ [选中]半透明 │ DataTable 选中: #F0EBE4                       │
@@ -244,6 +270,8 @@ btn->style()->polish(btn);
 | v1.2 | 表格 `#F0EBE4`；导航实色 `#DFEBE3` + `#5A6F63` |
 | **v1.3** | 导航改**半透明叠加**+黑字；FeedCard hover 柔化；WelcomeBanner **黄绿三色渐变**；评论区**透明底 + hover #FAF8F4** |
 | **v1.4** | 新增 **`IconButton`** 无边框图标按钮 + **`#InteractionCount`**；`ThemeIcons` 统一 SVG；详情互动/顶栏刷新/问答反馈/附件操作改为图标 |
+| **v1.5–v1.6** | 品牌「坐席智能体」：侧栏 `#NavBrandBlock`（Logo + PNG 字标「硅基生命坐席」）；顶栏恢复 **`PageTitle` + 页图标** 随导航切换 |
+| **v1.7** | 顶栏背景 **#FAF6F0**（比侧栏 `#F3EDE4` 更浅的淡米黄）；新增 token `bg-topbar` |
 
 ---
 
@@ -255,9 +283,11 @@ btn->style()->polish(btn);
 | 2 | 知识社区 FeedCard hover **轻暖、不突兀** |
 | 3 | 首页欢迎横幅为**黄→绿渐变** |
 | 4 | 表格选中 `#F0EBE4` 仍清晰可辨 |
-| 5 | 侧栏 `#F3EDE4` 与主区 `#FEFEFE` 可区分 |
-| 6 | 顶栏刷新、详情互动、问答反馈为**无边框绿图标**，tooltip 可读 |
-| 7 | 点赞/点踩**数字与图标分离**，选中态图标实心 + 计数 `#6B7F74` |
+| 5 | 顶栏 `#FAF6F0`、侧栏 `#F3EDE4`、主区 `#FEFEFE` **三层暖色可区分** |
+| 6 | 侧栏顶部 **Logo + PNG 字标** 正常显示，透明底无白块 |
+| 7 | 顶栏 **PageTitle + 页图标** 随导航切换 |
+| 8 | 顶栏刷新、详情互动、问答反馈为**无边框绿图标**，tooltip 可读 |
+| 9 | 点赞/点踩**数字与图标分离**，选中态图标实心 + 计数 `#6B7F74` |
 
 ---
 

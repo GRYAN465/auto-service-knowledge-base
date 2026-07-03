@@ -7,6 +7,8 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QFormLayout>
+#include <QHBoxLayout>
+#include <QIcon>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QLabel>
@@ -24,7 +26,7 @@ namespace kb {
 
 LoginDialog::LoginDialog(QWidget *parent) : QDialog(parent) {
     setObjectName("LoginDialog");
-    setWindowTitle(QStringLiteral("登录 · 智能客服知识库"));
+    setWindowTitle(QStringLiteral("登录 · 坐席智能体"));
     buildUi();
 }
 
@@ -75,10 +77,33 @@ void LoginDialog::buildLoginPage(QWidget *page) {
     form->setContentsMargins(0, 0, 0, 0);
     form->setSpacing(14);
 
-    auto *brand = new QLabel(QStringLiteral("智能客服知识库"), page);
+    auto *brandRow = new QWidget(page);
+    brandRow->setObjectName("LoginBrandRow");
+    auto *brandRowLayout = new QHBoxLayout(brandRow);
+    brandRowLayout->setContentsMargins(0, 0, 0, 0);
+    brandRowLayout->setSpacing(12);
+
+    auto *brandLogo = new QLabel(brandRow);
+    brandLogo->setObjectName("AppBrandMark");
+    brandLogo->setPixmap(QIcon(QStringLiteral(":/icons/app-logo-mark.svg")).pixmap(44, 44));
+    brandLogo->setFixedSize(44, 44);
+    brandLogo->setScaledContents(true);
+
+    auto *brandText = new QWidget(brandRow);
+    auto *brandTextLayout = new QVBoxLayout(brandText);
+    brandTextLayout->setContentsMargins(0, 0, 0, 0);
+    brandTextLayout->setSpacing(2);
+
+    auto *brand = new QLabel(QStringLiteral("坐席智能体"), brandText);
     brand->setObjectName("BrandTitle");
-    auto *subtitle = new QLabel(QStringLiteral("知识中台 · 控制台"), page);
+    auto *subtitle = new QLabel(QStringLiteral("智能客服知识库 · 控制台"), brandText);
     subtitle->setObjectName("BrandSubtitle");
+
+    brandTextLayout->addWidget(brand);
+    brandTextLayout->addWidget(subtitle);
+    brandRowLayout->addWidget(brandLogo);
+    brandRowLayout->addWidget(brandText, 1);
+    form->addWidget(brandRow);
 
     m_username = new QLineEdit(page);
     m_username->setPlaceholderText(QStringLiteral("用户名"));
@@ -107,8 +132,6 @@ void LoginDialog::buildLoginPage(QWidget *page) {
     auto *hint = new QLabel(QStringLiteral("演示账号 admin / 123456"), page);
     hint->setObjectName("HintLabel");
 
-    form->addWidget(brand);
-    form->addWidget(subtitle);
     form->addSpacing(8);
     form->addWidget(m_username);
     form->addWidget(m_password);
@@ -141,12 +164,33 @@ void LoginDialog::buildRegisterPage(QWidget *page) {
     outer->setContentsMargins(0, 0, 0, 0);
     outer->setSpacing(10);
 
-    auto *brand = new QLabel(QStringLiteral("注册账号"), page);
+    auto *brandRow = new QWidget(page);
+    brandRow->setObjectName("LoginBrandRow");
+    auto *brandRowLayout = new QHBoxLayout(brandRow);
+    brandRowLayout->setContentsMargins(0, 0, 0, 0);
+    brandRowLayout->setSpacing(12);
+
+    auto *brandLogo = new QLabel(brandRow);
+    brandLogo->setObjectName("AppBrandMark");
+    brandLogo->setPixmap(QIcon(QStringLiteral(":/icons/app-logo-mark.svg")).pixmap(40, 40));
+    brandLogo->setFixedSize(40, 40);
+    brandLogo->setScaledContents(true);
+
+    auto *brandText = new QWidget(brandRow);
+    auto *brandTextLayout = new QVBoxLayout(brandText);
+    brandTextLayout->setContentsMargins(0, 0, 0, 0);
+    brandTextLayout->setSpacing(2);
+
+    auto *brand = new QLabel(QStringLiteral("注册账号"), brandText);
     brand->setObjectName("BrandTitle");
-    auto *subtitle = new QLabel(QStringLiteral("注册后默认为普通用户"), page);
+    auto *subtitle = new QLabel(QStringLiteral("坐席智能体 · 注册后默认为普通用户"), brandText);
     subtitle->setObjectName("BrandSubtitle");
-    outer->addWidget(brand);
-    outer->addWidget(subtitle);
+
+    brandTextLayout->addWidget(brand);
+    brandTextLayout->addWidget(subtitle);
+    brandRowLayout->addWidget(brandLogo);
+    brandRowLayout->addWidget(brandText, 1);
+    outer->addWidget(brandRow);
 
     auto *scroll = new QScrollArea(page);
     scroll->setWidgetResizable(true);
@@ -231,13 +275,13 @@ void LoginDialog::applyServerUrl() {
 
 void LoginDialog::showLoginPage() {
     m_stack->setCurrentIndex(0);
-    setWindowTitle(QStringLiteral("登录 · 智能客服知识库"));
+    setWindowTitle(QStringLiteral("登录 · 坐席智能体"));
 }
 
 void LoginDialog::showRegisterPage() {
     applyServerUrl();
     m_stack->setCurrentIndex(1);
-    setWindowTitle(QStringLiteral("注册 · 智能客服知识库"));
+    setWindowTitle(QStringLiteral("注册 · 坐席智能体"));
     setRegisterStatus(QString());
     if (!m_orgsLoaded) {
         loadRegisterOrgs();

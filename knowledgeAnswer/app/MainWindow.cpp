@@ -25,7 +25,9 @@
 #include <QComboBox>
 #include <QFrame>
 #include <QHBoxLayout>
+#include <QIcon>
 #include <QLabel>
+#include <QPixmap>
 #include <QPushButton>
 #include <QStackedWidget>
 #include <QTreeWidget>
@@ -117,7 +119,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 }
 
 void MainWindow::buildUi() {
-    setWindowTitle(QStringLiteral("智能客服知识库系统"));
+    setWindowTitle(QStringLiteral("坐席智能体"));
     resize(1080, 720);
 
     auto *central = new QWidget(this);
@@ -131,6 +133,12 @@ void MainWindow::buildUi() {
     topBar->setFixedHeight(56);
     auto *topLayout = new QHBoxLayout(topBar);
     topLayout->setContentsMargins(20, 0, 16, 0);
+
+    m_pageTitleIcon = new QLabel(topBar);
+    m_pageTitleIcon->setObjectName("PageTitleIcon");
+    m_pageTitleIcon->setFixedSize(22, 22);
+    m_pageTitleIcon->setScaledContents(true);
+    m_pageTitleIcon->setVisible(false);
 
     m_pageTitle = new QLabel(QString(), topBar);
     m_pageTitle->setObjectName("PageTitle");
@@ -156,10 +164,11 @@ void MainWindow::buildUi() {
     ThemeIcons::applyIconButton(logout, ThemeIcons::Kind::Logout, QStringLiteral("退出登录"));
     connect(logout, &QPushButton::clicked, this, &MainWindow::loggedOut);
 
+    topLayout->addWidget(m_pageTitleIcon);
     topLayout->addWidget(m_pageTitle);
-    topLayout->addSpacing(12);
-    topLayout->addWidget(m_refreshBtn);
     topLayout->addStretch();
+    topLayout->addWidget(m_refreshBtn);
+    topLayout->addSpacing(12);
 
     const QVector<QString> &roles = Session::instance().roles();
     if (!roles.isEmpty()) {
@@ -197,6 +206,33 @@ void MainWindow::buildUi() {
     auto *navLayout = new QVBoxLayout(navSidebar);
     navLayout->setContentsMargins(0, 0, 0, 0);
     navLayout->setSpacing(0);
+
+    auto *navBrand = new QFrame(navSidebar);
+    navBrand->setObjectName("NavBrandBlock");
+    auto *navBrandLayout = new QHBoxLayout(navBrand);
+    navBrandLayout->setContentsMargins(14, 16, 14, 12);
+    navBrandLayout->setSpacing(10);
+
+    auto *navLogo = new QLabel(navBrand);
+    navLogo->setObjectName("NavBrandMark");
+    navLogo->setPixmap(QIcon(QStringLiteral(":/icons/app-logo-compact.svg")).pixmap(32, 32));
+    navLogo->setFixedSize(32, 32);
+    navLogo->setScaledContents(true);
+
+    auto *navWordmark = new QLabel(navBrand);
+    navWordmark->setObjectName("NavBrandWordmark");
+    const QPixmap wordmarkSrc(QStringLiteral(":/images/app-brand-wordmark.png"));
+    constexpr int kWordmarkW = 152;
+    const int wordmarkH =
+        wordmarkSrc.isNull() ? 38
+                             : qRound(kWordmarkW * wordmarkSrc.height() / qreal(wordmarkSrc.width()));
+    navWordmark->setPixmap(wordmarkSrc.scaled(kWordmarkW, wordmarkH, Qt::KeepAspectRatio,
+                                              Qt::SmoothTransformation));
+    navWordmark->setFixedSize(kWordmarkW, wordmarkH);
+
+    navBrandLayout->addWidget(navLogo);
+    navBrandLayout->addWidget(navWordmark, 1);
+    navLayout->addWidget(navBrand);
 
     m_nav = new QTreeWidget(navSidebar);
     m_nav->setObjectName("NavTree");
@@ -331,7 +367,31 @@ void MainWindow::navigateToCurrent() {
         return;
     }
     m_router->navigate(name);
+    updatePageTitle(item);
+}
+
+void MainWindow::updatePageTitle(QTreeWidgetItem *item) {
+    if (!item || !m_pageTitle) {
+        return;
+    }
     m_pageTitle->setText(item->text(0));
+
+    const QString routeName = item->data(0, Qt::UserRole).toString();
+    if (!m_pageTitleIcon || routeName.isEmpty()) {
+        if (m_pageTitleIcon) {
+            m_pageTitleIcon->setVisible(false);
+        }
+        return;
+    }
+
+    const QString iconPath = NavIcons::pathForRoute(routeName);
+    if (iconPath.isEmpty()) {
+        m_pageTitleIcon->setVisible(false);
+        return;
+    }
+
+    m_pageTitleIcon->setPixmap(QIcon(iconPath).pixmap(22, 22));
+    m_pageTitleIcon->setVisible(true);
 }
 
 void MainWindow::updateTopBarRefresh() {
