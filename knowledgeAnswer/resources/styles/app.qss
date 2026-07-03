@@ -1130,6 +1130,10 @@ QTreeWidget#DataTable::item:selected {
     border: none;
     background: transparent;
 }
+/* 单条消息的行容器：裸 QWidget 会继承全局 #FEFEFE 底色，在 #FAF8F4 转写区上压出突兀白框，故显式透明 */
+#TranscriptRow {
+    background: transparent;
+}
 #CustomerBubble {
     background: #9AA69D;
     color: #FFFFFF;

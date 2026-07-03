@@ -322,6 +322,7 @@ void AgentAssistPage::appendTranscript(const QString &speaker, const QString &co
                                    : QStringLiteral("AgentBubble"));
 
     auto *row = new QWidget(m_transcriptArea->widget());
+    row->setObjectName(QStringLiteral("TranscriptRow"));
     auto *rl = new QHBoxLayout(row);
     rl->setContentsMargins(0, 0, 0, 0);
     if (customer)
