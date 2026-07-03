@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="136" height="38" viewBox="0 0 136 38" fill="none">
+  <defs>
+    <linearGradient id="accentGrad" x1="0" y1="0" x2="136" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#5A7268"/>
+      <stop offset="100%" stop-color="#9AA69D"/>
+    </linearGradient>
+  </defs>
+  <circle cx="3" cy="5" r="1.4" fill="#9AA69D" opacity="0.55"/>
+  <circle cx="8" cy="5" r="1.4" fill="#9AA69D" opacity="0.32"/>
+  <circle cx="13" cy="5" r="1.4" fill="#9AA69D" opacity="0.18"/>
+  <text x="0" y="21" font-family="Microsoft YaHei UI, PingFang SC, SimHei, sans-serif" font-size="14.5" font-weight="700" fill="#141414" letter-spacing="0.8">Eú}</text>
+  <rect x="0" y="25" width="20" height="2.5" rx="1.25" fill="url(#accentGrad)"/>
+  <text x="26" y="36" font-family="Microsoft YaHei UI, PingFang SC, SimHei, sans-serif" font-size="12.5" font-weight="600" fill="#6B7F74" letter-spacing="4">P-</text>
+</svg>
